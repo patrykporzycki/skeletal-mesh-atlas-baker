@@ -1,0 +1,4 @@
+string material = s@fbx_material_name;
+string clean = re_replace("[^a-zA-Z0-9_]", "_", material);
+s@shop_materialpath = "/mat/mat_" + clean;
+
