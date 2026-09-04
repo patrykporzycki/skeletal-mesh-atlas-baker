@@ -11,6 +11,9 @@ def sync_material_overrides(hda_node):
 
     materials = sorted(set(p.attribValue("fbx_material_name") for p in geo.prims() if p.attribValue("fbx_material_name")))
     hda_node.parm("material_overrides").set(len(materials))
+    hda_node.parm("material_overrides").lock(True)
+
     for index, material_name in enumerate(materials, 1):
         hda_node.parm("material_name%d" % index).set(material_name)
+        hda_node.parm("material_name%d" % index).lock(True)
 
