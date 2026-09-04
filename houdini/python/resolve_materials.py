@@ -45,7 +45,7 @@ for i in range(1, count + 1):
     if not name:
         continue
     overrides[name] = {
-        "basecolor": hda.parm("basecolor%d" % i).eval(),
+        "base_color": hda.parm("base_color%d" % i).eval(),
         "normal": hda.parm("normal%d" % i).eval(),
         "roughness": hda.parm("roughness%d" % i).eval(),
         "metallic": hda.parm("metallic%d" % i).eval(),
@@ -84,11 +84,12 @@ for mat in sorted(mats):
         else:
             node.addWarning("Brak tekstury %s dla %s" % (slot, mat))
 
-shader.parm("basecolor_useTexture").set(1 if resolved.get("basecolor") else 0)
-shader.parm("basecolor_texture").set(resolved.get("basecolor", ""))
-shader.parm("baseNormal_useTexture").set(1 if resolved.get("normal") else 0)
-shader.parm("baseNormal_texture").set(resolved.get("normal", ""))
-shader.parm("rough_useTexture").set(1 if resolved.get("roughness") else 0)
-shader.parm("rough_texture").set(resolved.get("roughness", ""))
-shader.parm("metallic_useTexture").set(1 if resolved.get("metallic") else 0)
-shader.parm("metallic_texture").set(resolved.get("metallic", ""))
+        shader.parm("basecolor_useTexture").set(1 if resolved.get("basecolor") else 0)
+        shader.parm("basecolor_texture").set(resolved.get("basecolor", ""))
+        shader.parm("baseNormal_useTexture").set(1 if resolved.get("normal") else 0)
+        shader.parm("baseNormal_texture").set(resolved.get("normal", ""))
+        shader.parm("rough_useTexture").set(1 if resolved.get("roughness") else 0)
+        shader.parm("rough_texture").set(resolved.get("roughness", ""))
+        shader.parm("metallic_useTexture").set(1 if resolved.get("metallic") else 0)
+        shader.parm("metallic_texture").set(resolved.get("metallic", ""))
+
