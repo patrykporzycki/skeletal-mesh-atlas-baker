@@ -1,0 +1,7 @@
+int nearest_joint = nearpoint(1, @P);
+vector nearest_joint_position = point(1, "P", nearest_joint);
+float joint_point_distance = distance(@P, nearest_joint_position);
+float density_radius = ch("../joint_density_radius");
+float distance_preservation = 1 - clamp(joint_point_distance/density_radius, 0, 1);
+f@weight_gradient = sqrt(distance_preservation);
+
