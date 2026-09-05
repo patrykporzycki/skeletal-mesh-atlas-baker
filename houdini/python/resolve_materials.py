@@ -3,7 +3,10 @@ import re, os, hou
 node = hou.pwd()
 geo = node.geometry()
 hda = node.parent()
-
+mod = hda.hdaModule()
+SLOTS = mod.SLOTS
+CHANNEL_OVERRIDE_PARMS = mod.CHANNEL_OVERRIDE_PARMS
+DEFAULT_CHANNEL = mod.DEFAULT_CHANNEL
 
 SUFFIX_RULES = {
     "_bc": "_base_color",
@@ -24,9 +27,6 @@ SUFFIX_RULES = {
     "_mask": "packed",
     "_m": "packed",
 }
-CHANNEL_OVERRIDE_PARMS  = {
-    "roughness": "roughness_channel",
-     "metallic": "metallic_channel",}
 
 fbx_material_name = geo.findPrimAttrib("fbx_material_name")
 if fbx_material_name is None:
@@ -73,14 +73,14 @@ for mat in sorted(mats):
 
     override = overrides.get(mat, {})
 
-    channel = 0
-    for slot in ("base_color", "normal", "roughness", "metallic"):
+    channel = DEFAULT_CHANNEL
+    for slot in SLOTS:
 
         path = override.get(slot, "")
         if path:
             channel_override_key = CHANNEL_OVERRIDE_PARMS.get(slot)
             if channel_override_key:
-                channel = override.get(channel_override_key, 0)
+                channel = override.get(channel_override_key, DEFAULT_CHANNEL)
         elif textures_dir:
             expected_slot = None
             for suffix, target in SUFFIX_RULES.items():
@@ -107,10 +107,10 @@ for mat in sorted(mats):
     shader.parm("baseNormal_texture").set(resolved.get("normal", ""))
     shader.parm("rough_useTexture").set(1 if resolved.get("roughness") else 0)
     shader.parm("rough_texture").set(resolved.get("roughness", ""))
-    shader.parm("rough_monoChannel").set(resolved_channel.get("roughness", 0))
+    shader.parm("rough_monoChannel").set(resolved_channel.get("roughness", DEFAULT_CHANNEL))
     shader.parm("metallic_useTexture").set(1 if resolved.get("metallic") else 0)
     shader.parm("metallic_texture").set(resolved.get("metallic", ""))
-    shader.parm("metallic_monoChannel").set(resolved_channel.get("metallic", 0))
+    shader.parm("metallic_monoChannel").set(resolved_channel.get("metallic", DEFAULT_CHANNEL))
 
 
 

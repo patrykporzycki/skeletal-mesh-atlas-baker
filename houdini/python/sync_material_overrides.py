@@ -1,5 +1,12 @@
 import hou, json
 
+
+CHANNEL_OVERRIDE_PARMS  = {
+    "roughness": "roughness_channel",
+     "metallic": "metallic_channel",}
+SLOTS = ("base_color", "normal", "roughness", "metallic")
+DEFAULT_CHANNEL = 1
+
 def sync_material_overrides(hda_node):
 
     store = hda_node.parm("material_overrides_store").eval()
@@ -46,9 +53,9 @@ def sync_material_overrides(hda_node):
         hda_node.parm("base_color%d" % index).set(values.get("base_color", ""))
         hda_node.parm("normal%d" % index).set(values.get("normal", ""))
         hda_node.parm("roughness%d" % index).set(values.get("roughness", ""))
-        hda_node.parm("roughness_channel%d" % index).set(values.get("roughness_channel", 1))
+        hda_node.parm("roughness_channel%d" % index).set(values.get("roughness_channel", DEFAULT_CHANNEL))
         hda_node.parm("metallic%d" % index).set(values.get("metallic", ""))
-        hda_node.parm("metallic_channel%d" % index).set(values.get("metallic_channel", 1))
+        hda_node.parm("metallic_channel%d" % index).set(values.get("metallic_channel", DEFAULT_CHANNEL))
 
 
     hda_node.parm("material_overrides_store").set(json.dumps(data))
