@@ -6,13 +6,13 @@ hda = node.parent()
 
 
 SUFFIX_RULES = {
-    "_bc": "basecolor",
-    "_base_color": "basecolor",
-    "_basecolor": "basecolor",
-    "_diffuse": "basecolor",
-    "_albedo": "basecolor",
-    "_d": "basecolor",
-    "_color": "basecolor",
+    "_bc": "_base_color",
+    "_base_color": "_base_color",
+    "_basecolor": "_base_color",
+    "_diffuse": "_base_color",
+    "_albedo": "_base_color",
+    "_d": "_base_color",
+    "_color": "_base_color",
     "_n": "normal",
     "_normal": "normal",
     "_r": "roughness",
