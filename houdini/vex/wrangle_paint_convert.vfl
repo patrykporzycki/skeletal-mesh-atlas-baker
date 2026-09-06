@@ -1,0 +1,7 @@
+int use_vertex_color = chi("../use_vertex_color");
+
+if (use_vertex_color == 1) {
+    if (haspointattrib(0, "Cd")) {
+        f@paint_preserve = clamp(v@Cd.r, 0.0, 1.0);
+    }
+}

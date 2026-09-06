@@ -1,7 +1,28 @@
-int nearest_joint = nearpoint(1, @P);
-vector nearest_joint_position = point(1, "P", nearest_joint);
-float joint_point_distance = distance(@P, nearest_joint_position);
-float density_radius = ch("../joint_density_radius");
-float distance_preservation = 1 - clamp(joint_point_distance/density_radius, 0, 1);
-f@weight_gradient = sqrt(distance_preservation);
+int preserve_mode = chi("../preserve_mode");
+float preserve_value = 1;
 
+if (preserve_mode == 1) {
+    if (haspointattrib(0, "boneCapture_data")) {
+        float capture_weights[] = f[]@boneCapture_data;
+        if (len(capture_weights) > 0) {
+            float max_weight = max(capture_weights);
+            float dispersion = 1.0 - clamp(max_weight, 0.0, 1.0);
+            preserve_value = lerp(1.0, dispersion, (ch("../bone_capture_strength")/100));
+        }
+    }
+}
+else if (preserve_mode == 2) {
+    int nearest_joint = nearpoint(1, @P);
+    vector nearest_joint_position = point(1, "P", nearest_joint);
+    float joint_point_distance = distance(@P, nearest_joint_position);
+    float density_radius = ch("../joint_density_radius");
+    float distance_preservation = 1 - clamp(joint_point_distance/density_radius, 0, 1);
+    preserve_value = sqrt(distance_preservation);
+}
+else if (preserve_mode == 3) {
+    if (haspointattrib(0, "paint_preserve")) {
+        preserve_value = clamp(f@paint_preserve, 0.0, 1.0);
+    }
+}
+
+f@weight_gradient = preserve_value;
