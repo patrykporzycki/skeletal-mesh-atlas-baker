@@ -1,6 +1,5 @@
 import hou, json
 
-
 CHANNEL_OVERRIDE_PARMS  = {
     "roughness": "roughness_channel",
      "metallic": "metallic_channel",}
@@ -59,3 +58,29 @@ def sync_material_overrides(hda_node):
 
 
     hda_node.parm("material_overrides_store").set(json.dumps(data))
+
+
+def sync_vertex_attribs():
+    hda = hou.pwd()
+    items = []
+    source = hda.node("resolve_materials")
+    if source is not None:
+        try:
+            geo = source.geometry()
+            for attrib in geo.pointAttribs():
+                name = attrib.name()
+                if name == "Cd" or (name.startswith("Cd") and name[2:].isdigit()):
+                    items.append(name)
+        except hou.Error:
+            pass
+
+    items = sorted(set(items), key=lambda n: 0 if n == "Cd" else int(n[2:]))
+
+    if not items:
+        return ["none", "No vertex color"]
+
+    menu = []
+    for item in items:
+        menu.append(item)
+        menu.append(item)
+    return menu
