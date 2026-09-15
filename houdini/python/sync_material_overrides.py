@@ -10,14 +10,19 @@ def start_paint(hda_node):
     paint_node = hda_node.node("paint_preserve")
     if paint_node is None:
         return
-    network_editor = hou.ui.paneTabOfType(hou.paneTabType.NetworkEditor)
-    if network_editor is not None:
-        network_editor.setPin(True)
+    for pane_tab in hou.ui.paneTabs():
+        pane_type = pane_tab.type()
+        if pane_type == hou.paneTabType.Parm:
+            pane_tab.setCurrentNode(hda_node)
+            pane_tab.setPin(True)
+        elif pane_type == hou.paneTabType.NetworkEditor:
+            pane_tab.setPin(True)
     paint_node.setSelected(True, clear_all_selected=True, show_asset_if_selected=True)
     paint_node.setDisplayFlag(True)
     scene_viewer = hou.ui.paneTabOfType(hou.paneTabType.SceneViewer)
-    if scene_viewer:
+    if scene_viewer is not None:
         scene_viewer.enterCurrentNodeState()
+
 
 def stop_paint(hda_node):
     output_node = hda_node.node("null_reduced_geo")
@@ -28,9 +33,9 @@ def stop_paint(hda_node):
     if scene_viewer is not None:
         scene_viewer.enterViewState()
     hda_node.setSelected(True, clear_all_selected=True)
-    network_editor = hou.ui.paneTabOfType(hou.paneTabType.NetworkEditor)
-    if network_editor is not None:
-        network_editor.setPin(False)
+    for pane_tab in hou.ui.paneTabs():
+        if pane_tab.type() in (hou.paneTabType.Parm, hou.paneTabType.NetworkEditor):
+            pane_tab.setPin(False)
 
 
 def sync_material_overrides(hda_node):
