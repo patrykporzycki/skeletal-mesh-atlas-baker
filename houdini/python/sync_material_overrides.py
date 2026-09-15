@@ -6,6 +6,33 @@ CHANNEL_OVERRIDE_PARMS  = {
 SLOTS = ("base_color", "normal", "roughness", "metallic")
 DEFAULT_CHANNEL = 1
 
+def start_paint(hda_node):
+    paint_node = hda_node.node("paint_preserve")
+    if paint_node is None:
+        return
+    network_editor = hou.ui.paneTabOfType(hou.paneTabType.NetworkEditor)
+    if network_editor is not None:
+        network_editor.setPin(True)
+    paint_node.setSelected(True, clear_all_selected=True, show_asset_if_selected=True)
+    paint_node.setDisplayFlag(True)
+    scene_viewer = hou.ui.paneTabOfType(hou.paneTabType.SceneViewer)
+    if scene_viewer:
+        scene_viewer.enterCurrentNodeState()
+
+def stop_paint(hda_node):
+    output_node = hda_node.node("null_reduced_geo")
+    if output_node is None:
+        return
+    output_node.setDisplayFlag(True)
+    scene_viewer = hou.ui.paneTabOfType(hou.paneTabType.SceneViewer)
+    if scene_viewer is not None:
+        scene_viewer.enterViewState()
+    hda_node.setSelected(True, clear_all_selected=True)
+    network_editor = hou.ui.paneTabOfType(hou.paneTabType.NetworkEditor)
+    if network_editor is not None:
+        network_editor.setPin(False)
+
+
 def sync_material_overrides(hda_node):
 
     store = hda_node.parm("material_overrides_store").eval()
