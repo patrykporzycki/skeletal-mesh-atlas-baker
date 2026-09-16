@@ -37,6 +37,43 @@ def stop_paint(hda_node):
         if pane_tab.type() in (hou.paneTabType.Parm, hou.paneTabType.NetworkEditor):
             pane_tab.setPin(False)
 
+def reset_paint(hda_node):
+    paint_node = hda_node.node("paint_preserve")
+    if paint_node is None:
+        return
+    reset_parm = paint_node.parm("reset")
+    if reset_parm is None:
+        return
+    reset_parm.pressButton()
+
+def preview_vertex_color(hda_node):
+    scene_viewer = hou.ui.paneTabOfType(hou.paneTabType.SceneViewer)
+    if scene_viewer is None:
+        return
+    viewport = scene_viewer.curViewport()
+    if viewport is None:
+        return
+    for existing in hou.viewportVisualizers.visualizers(
+            category=hou.viewportVisualizerCategory.Scene):
+        if existing.name() == "preview_vertex_color":
+            existing.destroy()
+            return
+    attrib_name = hda_node.parm("vertex_color_attrib").evalAsString()
+    visualizer = hou.viewportVisualizers.createVisualizer(
+        hou.viewportVisualizers.type("vis_color"),
+        category=hou.viewportVisualizerCategory.Scene)
+    visualizer.setName("preview_vertex_color")
+    visualizer.setLabel("Preview Vertex Color")
+    visualizer.setParm("colortype", "attribramped")
+    visualizer.setParm("attrib", attrib_name)
+    visualizer.setIsActive(True, viewport=viewport)
+
+def hide_preview(hda_node):
+    for existing in hou.viewportVisualizers.visualizers(
+            category=hou.viewportVisualizerCategory.Scene):
+        if existing.name() == "preview_vertex_color":
+            existing.destroy()
+            return
 
 def sync_material_overrides(hda_node):
 
