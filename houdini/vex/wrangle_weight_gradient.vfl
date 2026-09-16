@@ -19,10 +19,8 @@ else if (preserve_mode == 2) {
     float distance_preservation = 1 - clamp(joint_point_distance/density_radius, 0, 1);
     preserve_value = sqrt(distance_preservation);
 }
-else if (preserve_mode == 3) {
-    if (haspointattrib(0, "paint_preserve")) {
-        preserve_value = clamp(f@paint_preserve, 0.0, 1.0);
-    }
+if(haspointattrib(0, "paint_preserve")) {
+    preserve_value *= clamp(f@paint_preserve, 0, 1);
 }
 
 f@weight_gradient = preserve_value;
