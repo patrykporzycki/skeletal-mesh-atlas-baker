@@ -6,6 +6,33 @@ CHANNEL_OVERRIDE_PARMS  = {
 SLOTS = ("base_color", "normal", "roughness", "metallic")
 DEFAULT_CHANNEL = 1
 
+def sync_rect_materials():
+    node = hou.pwd()
+    if node is None:
+        return []
+
+    materials = []
+    override_count = node.parm("material_overrides").evalAsInt()
+    for index in range(1, override_count + 1):
+        name = node.parm("material_name%d" % index).eval()
+        if name:
+            materials.append(name)
+    materials = sorted(set(materials))
+
+    used = set()
+    for r in range(node.parm("rects").evalAsInt()):
+        for m in range(1, node.parm("mats%d" % r).evalAsInt() + 1):
+            value = node.parm("material_name%d_%d" % (r, m)).eval()
+            if value:
+                used.add(value)
+
+    menu = []
+    for material in materials:
+        if material not in used:
+            menu += [material, material]
+    return menu
+
+
 def start_paint(hda_node):
     paint_node = hda_node.node("paint_preserve")
     if paint_node is None:
@@ -102,6 +129,8 @@ def sync_material_overrides(hda_node):
         return
     try:
         geo = input_node.geometry()
+        if geo is None:
+            return
     except hou.Error:
         return
 
@@ -136,6 +165,8 @@ def sync_vertex_attribs():
     if source is not None:
         try:
             geo = source.geometry()
+            if geo is None:
+                return ["none", "No vertex color"]
             for attrib in geo.pointAttribs():
                 name = attrib.name()
                 if name == "Cd" or (name.startswith("Cd") and name[2:].isdigit()):
