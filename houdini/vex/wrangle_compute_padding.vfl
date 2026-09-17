@@ -1,0 +1,4 @@
+int atlas_resolution = chi("../resolution");
+int auto_padding = clamp(atlas_resolution / 64, 4, 32);
+int user_padding = chi("../padding");
+i@computed_padding = (user_padding > 0 ) ? user_padding : auto_padding;
