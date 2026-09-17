@@ -6,14 +6,13 @@ CHANNEL_OVERRIDE_PARMS  = {
 SLOTS = ("base_color", "normal", "roughness", "metallic")
 DEFAULT_CHANNEL = 1
 
-def sync_rect_materials():
-    node = hou.pwd()
-    if node is None:
-        return []
+def create_rect_materials_menu(parm):
+    node = parm.node()
+    current_value = parm.eval()
 
     materials = []
-    override_count = node.parm("material_overrides").evalAsInt()
-    for index in range(1, override_count + 1):
+    count = node.parm("material_overrides").evalAsInt()
+    for index in range(1, count + 1):
         name = node.parm("material_name%d" % index).eval()
         if name:
             materials.append(name)
@@ -28,7 +27,7 @@ def sync_rect_materials():
 
     menu = []
     for material in materials:
-        if material not in used:
+        if material == current_value or material not in used:
             menu += [material, material]
     return menu
 
