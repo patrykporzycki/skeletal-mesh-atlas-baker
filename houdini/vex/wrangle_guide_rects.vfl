@@ -1,0 +1,29 @@
+int rect_count = chi("../rects");
+
+for (int rect_index = 0; rect_index < rect_count; rect_index++)
+{
+    float center_x = chf(sprintf("../rect_center%dx", rect_index));
+    float center_y = chf(sprintf("../rect_center%dy", rect_index));
+    float size_x = chf(sprintf("../rect_size%dx", rect_index));
+    float size_y = chf(sprintf("../rect_size%dy", rect_index));
+
+    float min_x = center_x - size_x * 0.5;
+    float min_y = center_y - size_y * 0.5;
+    float max_x = center_x + size_x * 0.5;
+    float max_y = center_y + size_y * 0.5;
+
+    int p0 = addpoint(0, set(min_x, min_y, 0.0));
+    int p1 = addpoint(0, set(max_x, min_y, 0.0));
+    int p2 = addpoint(0, set(max_x, max_y, 0.0));
+    int p3 = addpoint(0, set(min_x, max_y, 0.0));
+
+    int prim = addprim(0, "poly", array(p0, p1, p2, p3));
+
+    setvertexattrib(0, "uv", prim, 0, set(min_x, min_y, 0.0));
+    setvertexattrib(0, "uv", prim, 1, set(max_x, min_y, 0.0));
+    setvertexattrib(0, "uv", prim, 2, set(max_x, max_y, 0.0));
+    setvertexattrib(0, "uv", prim, 3, set(min_x, max_y, 0.0));
+
+    vector color = hsvtorgb((float)rect_index / (float)max(rect_count, 1), 0.8, 1.0);
+    setprimattrib(0, "uv_guide_color", prim, color);
+}
