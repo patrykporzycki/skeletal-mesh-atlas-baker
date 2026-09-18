@@ -1,7 +1,7 @@
 int rect_count = chi("../rects");
 string material_name = s@fbx_material_name;
 
-i@uv_region_id = 0;
+i@uv_region_id = -1;
 
 for (int rect_index = 0; rect_index < rect_count; rect_index++)
 {
@@ -18,7 +18,7 @@ for (int rect_index = 0; rect_index < rect_count; rect_index++)
         }
     }
 
-    if (i@uv_region_id != 0)
+    if (i@uv_region_id != -1)
     {
         break;
     }

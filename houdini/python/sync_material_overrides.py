@@ -25,11 +25,33 @@ def create_rect_materials_menu(parm):
             if value:
                 used.add(value)
 
-    menu = []
+    menu = ["", "(none)"]
     for material in materials:
         if material == current_value or material not in used:
             menu += [material, material]
     return menu
+
+
+def sync_rects_to_uv(hda_node):
+    uv = hda_node.node("uvlayout1")
+    if uv is None:
+        return
+    count = hda_node.parm("rects").evalAsInt()
+    uv.parm("rects").set(count + 1)
+
+    uv.parm("rect_use0").set(1)
+    uv.parm("rect_center0x").set(0.01)
+    uv.parm("rect_center0y").set(0.01)
+    uv.parm("rect_size0x").set(0.02)
+    uv.parm("rect_size0y").set(0.02)
+
+    for uv_index in range(1, count + 1):
+        hda_index = uv_index - 1
+        uv.parm("rect_use%d" % uv_index).setExpression("ch('../rect_use%d')" % hda_index)
+        for props in ("center", "size"):
+            for axis in ("x", "y"):
+                uv.parm("rect_%s%d%s" % (props, uv_index, axis)).setExpression(
+                    "ch('../rect_%s%d%s')" % (props, hda_index, axis))
 
 
 def start_paint(hda_node):
