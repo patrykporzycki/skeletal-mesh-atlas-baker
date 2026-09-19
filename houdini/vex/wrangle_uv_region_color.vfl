@@ -1,0 +1,13 @@
+int rect_count = chi("../rects");
+
+int region_id = prim(0, "uv_region_id", i@primnum);
+int rect_index = region_id - 1;
+
+if (rect_index >= 0)
+{
+    v@uv_guide_color = hsvtorgb((float)rect_index / (float)max(rect_count, 1), 0.8, 1.0);
+}
+else
+{
+    v@uv_guide_color = set(0.2, 0.2, 0.2);
+}

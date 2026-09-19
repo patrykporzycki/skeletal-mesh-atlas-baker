@@ -12,10 +12,10 @@ for (int rect_index = 0; rect_index < rect_count; rect_index++)
     float max_x = center_x + size_x * 0.5;
     float max_y = center_y + size_y * 0.5;
 
-    int p0 = addpoint(0, set(min_x, min_y, 0.0));
-    int p1 = addpoint(0, set(max_x, min_y, 0.0));
-    int p2 = addpoint(0, set(max_x, max_y, 0.0));
-    int p3 = addpoint(0, set(min_x, max_y, 0.0));
+    int p0 = addpoint(0, set(0.0, 0.0, 0.0));
+    int p1 = addpoint(0, set(0.0, 0.0, 0.0));
+    int p2 = addpoint(0, set(0.0, 0.0, 0.0));
+    int p3 = addpoint(0, set(0.0, 0.0, 0.0));
 
     int prim = addprim(0, "poly", array(p0, p1, p2, p3));
 
@@ -25,5 +25,9 @@ for (int rect_index = 0; rect_index < rect_count; rect_index++)
     setvertexattrib(0, "uv", prim, 3, set(min_x, max_y, 0.0));
 
     vector color = hsvtorgb((float)rect_index / (float)max(rect_count, 1), 0.8, 1.0);
-    setprimattrib(0, "uv_guide_color", prim, color);
+    setpointattrib(0, "uv_guide_color", p0, color);
+    setpointattrib(0, "uv_guide_color", p1, color);
+    setpointattrib(0, "uv_guide_color", p2, color);
+    setpointattrib(0, "uv_guide_color", p3, color);
+
 }

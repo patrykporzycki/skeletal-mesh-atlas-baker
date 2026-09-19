@@ -6,6 +6,14 @@ CHANNEL_OVERRIDE_PARMS  = {
 SLOTS = ("base_color", "normal", "roughness", "metallic")
 DEFAULT_CHANNEL = 1
 
+def repack_uv(hda_node):
+    locked = hda_node.node("null_repack_uv")
+    if locked is None:
+        return
+    locked.setHardLocked(False)
+    locked.cook(force=True)
+    locked.setHardLocked(True)
+
 def create_rect_materials_menu(parm):
     node = parm.node()
     current_value = parm.eval()
@@ -93,6 +101,37 @@ def reset_paint(hda_node):
     if reset_parm is None:
         return
     reset_parm.pressButton()
+
+def preview_uv_guide_color(hda_node):
+    switch_node = hou.node("./switch_uv_guide")
+
+    if switch_node is not None:
+        switch_value = switch_node.parm("input").evalAsInt()
+        if switch_value == 0:
+            switch_node.parm("input").set(switch_value + 1)
+        else:
+            switch_node.parm("input").set(0)
+
+    scene_viewer = hou.ui.paneTabOfType(hou.paneTabType.SceneViewer)
+    if scene_viewer is None:
+        return
+    viewport = scene_viewer.curViewport()
+    if viewport is None:
+        return
+    for existing in hou.viewportVisualizers.visualizers(
+            category=hou.viewportVisualizerCategory.Scene):
+        if existing.name() == "preview_uv_guide_color":
+            existing.destroy()
+            return
+    visualizer = hou.viewportVisualizers.createVisualizer(
+        hou.viewportVisualizers.type("vis_color"),
+        category=hou.viewportVisualizerCategory.Scene)
+    visualizer.setName("preview_uv_guide_color")
+    visualizer.setLabel("Preview UV Guide Color")
+    visualizer.setParm("colortype", "attribasis")
+    visualizer.setParm("attrib", "uv_guide_color")
+    visualizer.setIsActive(True, viewport=viewport)
+
 
 def preview_vertex_color(hda_node):
     scene_viewer = hou.ui.paneTabOfType(hou.paneTabType.SceneViewer)
@@ -199,6 +238,33 @@ def sync_vertex_attribs():
 
     if not items:
         return ["none", "No vertex color"]
+
+    menu = []
+    for item in items:
+        menu.append(item)
+        menu.append(item)
+    return menu
+
+def sync_uv_channels():
+    hda = hou.pwd()
+    items = []
+    source = hda.node("null_reduced_geo")
+    if source is not None:
+        try:
+            geo = source.geometry()
+            if geo is None:
+                return ["none", "No uv channel"]
+            for attrib in geo.vertexAttribs():
+                name = attrib.name()
+                if name == "uv" or (name.startswith("uv") and name[2:].isdigit()):
+                    items.append(name)
+        except hou.Error:
+            pass
+
+    items = sorted(set(items), key=lambda n: 0 if n == "uv" else int(n[2:]))
+
+    if not items:
+        return ["none", "No uv channel"]
 
     menu = []
     for item in items:
