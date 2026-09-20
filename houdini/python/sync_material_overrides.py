@@ -6,13 +6,26 @@ CHANNEL_OVERRIDE_PARMS  = {
 SLOTS = ("base_color", "normal", "roughness", "metallic")
 DEFAULT_CHANNEL = 1
 
+def dev_view_3d(hda_node):
+    node = hda_node.node("wrangle_uv_region_color")
+    if node:
+        node.setDisplayFlag(True)
+        node.setRenderFlag(True)
+
+def dev_view_uv(hda_node):
+    node = hda_node.node("switch_uv_guide")
+    if node:
+        node.setDisplayFlag(True)
+        node.setRenderFlag(True)
+
 def repack_uv(hda_node):
-    locked = hda_node.node("null_repack_uv")
-    if locked is None:
+    filecache = hda_node.node("filecache_uv")
+    if filecache is None:
         return
-    locked.setHardLocked(False)
-    locked.cook(force=True)
-    locked.setHardLocked(True)
+    filecache.parm("loadfromdisk").set(0)
+    filecache.parm("execute").pressButton()
+    filecache.parm("loadfromdisk").set(1)
+
 
 def create_rect_materials_menu(parm):
     node = parm.node()
