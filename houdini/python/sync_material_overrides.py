@@ -197,7 +197,7 @@ def sync_material_overrides(hda_node):
             "metallic_channel": hda_node.parm("metallic_channel%d" % i).evalAsInt(),
         }
 
-    input_node = hda_node.node("fbx_character_import")
+    input_node = hda_node.node("fuse_fbx_import")
     if input_node is None:
         return
     try:
@@ -205,6 +205,10 @@ def sync_material_overrides(hda_node):
         if geo is None:
             return
     except hou.Error:
+        return
+
+    if geo.findPrimAttrib("fbx_material_name") is None:
+        print("[sync_material_overrides] brak fbx_material_name na geometrii!")
         return
 
     materials = sorted(set(p.attribValue("fbx_material_name") for p in geo.prims() if p.attribValue("fbx_material_name")))
@@ -246,6 +250,8 @@ def sync_vertex_attribs():
                     items.append(name)
         except hou.Error:
             pass
+
+
 
     items = sorted(set(items), key=lambda n: 0 if n == "Cd" else int(n[2:]))
 
