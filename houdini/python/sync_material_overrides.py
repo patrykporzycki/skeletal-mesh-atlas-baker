@@ -4,7 +4,11 @@ CHANNEL_OVERRIDE_PARMS  = {
     "roughness": "roughness_channel",
      "metallic": "metallic_channel",}
 SLOTS = ("base_color", "normal", "roughness", "metallic")
-DEFAULT_CHANNEL = 1
+DEFAULT_CHANNEL = "RGBA"
+CHANNEL_INDEX = {"RGBA": 1, "R": 1, "G": 2, "B": 3, "A": 4}
+SLOT_TYPE_NAMES = ("base_color", "normal", "roughness", "metallic", "opacity", "custom")
+TYPE_NORMALIZE = {"0":"base_color","1":"normal","2":"roughness","3":"metallic","4":"opacity","5":"custom"}
+CHANNEL_NORMALIZE = {"0":"RGBA","1":"R","2":"G","3":"B","4":"A"}
 
 def dev_view_3d(hda_node):
     node = hda_node.node("wrangle_uv_region_color")
@@ -175,65 +179,85 @@ def hide_preview(hda_node):
             return
 
 def sync_material_overrides(hda_node):
-
     store = hda_node.parm("material_overrides_store").eval()
     try:
-        data = json.loads(store) if store else {}
+        all_data = json.loads(store) if store else {}
     except ValueError:
-        data = {}
+        all_data = {}
 
-    count = hda_node.parm("material_overrides").evalAsInt()
-    for i in range(1, count + 1):
-        name = hda_node.parm("material_name%d" % i).eval()
-        if not name:
-            continue
-        data[name] = {
-            "base_color": hda_node.parm("base_color%d" % i).eval(),
-            "normal": hda_node.parm("normal%d" % i).eval(),
-            "roughness": hda_node.parm("roughness%d" % i).eval(),
-            "roughness_channel": hda_node.parm("roughness_channel%d" % i).evalAsInt(),
-            "metallic": hda_node.parm("metallic%d" % i).eval(),
-            "metallic_channel": hda_node.parm("metallic_channel%d" % i).evalAsInt(),
-        }
+    fbx_file = hda_node.parm("fbx_input_file").eval()
+    prev_fbx = all_data.get("_last_fbx", "")
+    fbx_changed = bool(prev_fbx) and prev_fbx != fbx_file
+
+    if fbx_changed:
+        result = {}
+        count = hda_node.parm("material_overrides").evalAsInt()
+        for i in range(1, count + 1):
+            name = hda_node.parm("material_name%d" % i).eval()
+            if not name:
+                continue
+            inner = hda_node.parm("texture_slots%d" % i)
+            slots = []
+            if inner is not None:
+                for j in range(1, inner.evalAsInt() + 1):
+                    raw_type = hda_node.parm("slot_type%d_%d" % (i, j)).eval()
+                    raw_channel = hda_node.parm("slot_channel%d_%d" % (i, j)).eval()
+                    slots.append({
+                        "type": TYPE_NORMALIZE.get(raw_type, raw_type),
+                        "texture": hda_node.parm("slot_texture%d_%d" % (i, j)).eval(),
+                        "channel": CHANNEL_NORMALIZE.get(raw_channel, raw_channel),
+                    })
+            result[name] = slots
+        all_data[prev_fbx] = result
+    all_data["_last_fbx"] = fbx_file
 
     input_node = hda_node.node("fuse_fbx_import")
     if input_node is None:
         return
     try:
         geo = input_node.geometry()
-        if geo is None:
-            return
     except hou.Error:
         return
-
-    if geo.findPrimAttrib("fbx_material_name") is None:
+    if geo is None or geo.findPrimAttrib("fbx_material_name") is None:
         print("[sync_material_overrides] brak fbx_material_name na geometrii!")
         return
 
-    materials = sorted(set(p.attribValue("fbx_material_name") for p in geo.prims() if p.attribValue("fbx_material_name")))
+    materials = sorted(set(
+        p.attribValue("fbx_material_name")
+        for p in geo.prims()
+        if p.attribValue("fbx_material_name")
+    ))
 
-    hda_node.parm("material_overrides").lock(False)
-    hda_node.parm("material_overrides").set(len(materials))
-    hda_node.parm("material_overrides").lock(True)
+    saved = all_data.get(fbx_file, {}) if fbx_changed else {}
+
+    old_mode = hou.updateModeSetting()
+    hou.setUpdateMode(hou.updateMode.Manual)
+    try:
+        hda_node.parm("material_overrides").lock(False)
+        hda_node.parm("material_overrides").set(len(materials))
+        hda_node.parm("material_overrides").lock(True)
+
+        for index, material_name in enumerate(materials, 1):
+            hda_node.parm("material_name%d" % index).lock(False)
+            hda_node.parm("material_name%d" % index).set(material_name)
+            hda_node.parm("material_name%d" % index).lock(True)
+
+            if fbx_changed:
+                slots = saved.get(material_name, [])
+                hda_node.parm("texture_slots%d" % index).set(len(slots))
+                for j, slot in enumerate(slots, 1):
+                    if not isinstance(slot, dict):
+                        continue
+                    hda_node.parm("slot_type%d_%d" % (index, j)).set(slot.get("type", "base_color"))
+                    hda_node.parm("slot_texture%d_%d" % (index, j)).set(slot.get("texture", ""))
+                    hda_node.parm("slot_channel%d_%d" % (index, j)).set(slot.get("channel", "RGBA"))
+
+        hda_node.parm("material_overrides_store").set(json.dumps(all_data))
+        dev_view_3d(hda_node)
+    finally:
+        hou.setUpdateMode(old_mode)
 
 
-    for index, material_name in enumerate(materials, 1):
-        hda_node.parm("material_name%d" % index).lock(False)
-        hda_node.parm("material_name%d" % index).set(material_name)
-        hda_node.parm("material_name%d" % index).lock(True)
-
-        values = data.get(material_name, {})
-        hda_node.parm("base_color%d" % index).set(values.get("base_color", ""))
-        hda_node.parm("normal%d" % index).set(values.get("normal", ""))
-        hda_node.parm("roughness%d" % index).set(values.get("roughness", ""))
-        hda_node.parm("roughness_channel%d" % index).set(values.get("roughness_channel", DEFAULT_CHANNEL))
-        hda_node.parm("metallic%d" % index).set(values.get("metallic", ""))
-        hda_node.parm("metallic_channel%d" % index).set(values.get("metallic_channel", DEFAULT_CHANNEL))
-
-
-    hda_node.parm("material_overrides_store").set(json.dumps(data))
-
-    dev_view_3d(hda_node)
 
 
 def sync_vertex_attribs():

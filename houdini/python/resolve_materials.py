@@ -7,6 +7,9 @@ mod = hda.hdaModule()
 SLOTS = mod.SLOTS
 CHANNEL_OVERRIDE_PARMS = mod.CHANNEL_OVERRIDE_PARMS
 DEFAULT_CHANNEL = mod.DEFAULT_CHANNEL
+CHANNEL_INDEX = mod.CHANNEL_INDEX
+TYPE_NORMALIZE = mod.TYPE_NORMALIZE
+CHANNEL_NORMALIZE = mod.CHANNEL_NORMALIZE
 
 SUFFIX_RULES = {
     "_bc": "_base_color",
@@ -47,14 +50,22 @@ for i in range(1, count + 1):
     name = hda.parm("material_name%d" % i).eval()
     if not name:
         continue
-    overrides[name] = {
-        "base_color": hda.parm("base_color%d" % i).eval(),
-        "normal": hda.parm("normal%d" % i).eval(),
-        "roughness": hda.parm("roughness%d" % i).eval(),
-        "roughness_channel": hda.parm("roughness_channel%d" % i).eval(),
-        "metallic": hda.parm("metallic%d" % i).eval(),
-        "metallic_channel": hda.parm("metallic_channel%d" % i).eval(),
-    }
+    entry = {}
+    inner = hda.parm("texture_slots%d" % i)
+    if inner is not None:
+        for j in range(1, inner.evalAsInt() + 1):
+            slot_type = hda.parm("slot_type%d_%d" % (i, j)).eval()
+            slot_type = TYPE_NORMALIZE.get(slot_type, slot_type)
+            texture = hda.parm("slot_texture%d_%d" % (i, j)).eval()
+            channel = hda.parm("slot_channel%d_%d" % (i, j)).eval()
+            channel = CHANNEL_NORMALIZE.get(channel, channel)
+            if not texture:
+                continue
+            entry[slot_type] = texture
+            channel_key = CHANNEL_OVERRIDE_PARMS.get(slot_type)
+            if channel_key:
+                entry[channel_key] = channel
+    overrides[name] = entry
 
 textures_dir_parm = hda.parm("textures_dir")
 textures_dir = textures_dir_parm.eval() if textures_dir_parm else ""
@@ -111,10 +122,10 @@ for mat in sorted(mats):
     shader.parm("baseNormal_texture").set(resolved.get("normal", ""))
     shader.parm("rough_useTexture").set(1 if resolved.get("roughness") else 0)
     shader.parm("rough_texture").set(resolved.get("roughness", ""))
-    shader.parm("rough_monoChannel").set(resolved_channel.get("roughness", DEFAULT_CHANNEL))
+    shader.parm("rough_monoChannel").set(CHANNEL_INDEX.get(resolved_channel.get("roughness", DEFAULT_CHANNEL), 1))
     shader.parm("metallic_useTexture").set(1 if resolved.get("metallic") else 0)
     shader.parm("metallic_texture").set(resolved.get("metallic", ""))
-    shader.parm("metallic_monoChannel").set(resolved_channel.get("metallic", DEFAULT_CHANNEL))
+    shader.parm("metallic_monoChannel").set(CHANNEL_INDEX.get(resolved_channel.get("metallic", DEFAULT_CHANNEL), 1))
 
 
 
