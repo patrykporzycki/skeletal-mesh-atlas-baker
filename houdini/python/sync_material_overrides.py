@@ -1,4 +1,4 @@
-import hou, json
+import hou, json, re
 
 CHANNEL_OVERRIDE_PARMS  = {
     "roughness": "roughness_channel",
@@ -53,6 +53,37 @@ def create_rect_materials_menu(parm):
     for material in materials:
         if material == current_value or material not in used:
             menu += [material, material]
+    return menu
+
+def create_slot_type_menu(parm):
+    node = parm.node()
+    current_value = TYPE_NORMALIZE.get(parm.eval(), parm.eval())
+
+    match = re.match(r"slot_type(\d+)_(\d+)", parm.name())
+    if not match:
+        menu = []
+        for t in SLOT_TYPE_NAMES:
+            menu += [t, t.replace("_", " ").title()]
+        return menu
+    mat_idx = int(match.group(1))
+    current_j = int(match.group(2))
+
+    used = set()
+    inner = node.parm("texture_slots%d" % mat_idx)
+    if inner:
+        for j in range(1, inner.evalAsInt() + 1):
+            if j == current_j:
+                continue
+            val = node.parm("slot_type%d_%d" % (mat_idx, j)).eval()
+            val = TYPE_NORMALIZE.get(val, val)
+            if val:
+                used.add(val)
+    labels = {"base_color": "Base Color", "normal": "Normal", "roughness": "Roughness",
+              "metallic": "Metallic", "opacity": "Opacity", "custom": "Custom"}
+    menu = []
+    for token in SLOT_TYPE_NAMES:
+        if token == current_value or token not in used:
+            menu += [token, labels[token]]
     return menu
 
 
