@@ -102,6 +102,10 @@ for mat in sorted(mats):
             node.addWarning("Brak tekstury %s dla %s" % (slot, mat))
 
     shader.parm("basecolor_useTexture").set(1 if resolved.get("base_color") else 0)
+    shader.parm("basecolorr").set(1.0)
+    shader.parm("basecolorg").set(1.0)
+    shader.parm("basecolorb").set(1.0)
+    shader.parm("basecolor_usePointColor").set(0)
     shader.parm("basecolor_texture").set(resolved.get("base_color", ""))
     shader.parm("baseNormal_useTexture").set(1 if resolved.get("normal") else 0)
     shader.parm("baseNormal_texture").set(resolved.get("normal", ""))
@@ -111,6 +115,7 @@ for mat in sorted(mats):
     shader.parm("metallic_useTexture").set(1 if resolved.get("metallic") else 0)
     shader.parm("metallic_texture").set(resolved.get("metallic", ""))
     shader.parm("metallic_monoChannel").set(resolved_channel.get("metallic", DEFAULT_CHANNEL))
+
 
 
 

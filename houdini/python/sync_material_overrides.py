@@ -26,7 +26,6 @@ def repack_uv(hda_node):
     filecache.parm("execute").pressButton()
     filecache.parm("loadfromdisk").set(1)
 
-
 def create_rect_materials_menu(parm):
     node = parm.node()
     current_value = parm.eval()
@@ -234,6 +233,8 @@ def sync_material_overrides(hda_node):
 
     hda_node.parm("material_overrides_store").set(json.dumps(data))
 
+    dev_view_3d(hda_node)
+
 
 def sync_vertex_attribs():
     hda = hou.pwd()
@@ -290,3 +291,9 @@ def sync_uv_channels():
         menu.append(item)
         menu.append(item)
     return menu
+
+def bake_textures(hda_node):
+    baker = hda_node.node("maps_baker1")
+    if baker is None:
+        return
+    baker.parm("execute").pressButton()
