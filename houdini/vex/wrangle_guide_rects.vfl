@@ -19,10 +19,11 @@ for (int rect_index = 0; rect_index < rect_count; rect_index++)
 
     int prim = addprim(0, "poly", array(p0, p1, p2, p3));
 
-    setvertexattrib(0, "uv", prim, 0, set(min_x, min_y, 0.0));
-    setvertexattrib(0, "uv", prim, 1, set(max_x, min_y, 0.0));
-    setvertexattrib(0, "uv", prim, 2, set(max_x, max_y, 0.0));
-    setvertexattrib(0, "uv", prim, 3, set(min_x, max_y, 0.0));
+    string uv_channel = chs("../uv_channel");
+    setvertexattrib(0, uv_channel, prim, 0, set(min_x, min_y, 0.0));
+    setvertexattrib(0, uv_channel, prim, 1, set(max_x, min_y, 0.0));
+    setvertexattrib(0, uv_channel, prim, 2, set(max_x, max_y, 0.0));
+    setvertexattrib(0, uv_channel, prim, 3, set(min_x, max_y, 0.0));
 
     vector color = hsvtorgb((float)rect_index / (float)max(rect_count, 1), 0.8, 1.0);
     setpointattrib(0, "uv_guide_color", p0, color);
