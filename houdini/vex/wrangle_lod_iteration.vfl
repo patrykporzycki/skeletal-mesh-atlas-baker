@@ -1,9 +1,19 @@
 int iteration = detail(1, "iteration", 0);
-float pcts[] = detail(0, "lod_pcts", 0);
-
-i@lod_index = iteration;
-f@lod_target_percent = (iteration < len(pcts)) ? pcts[iteration] : 50.0;
 
 int include_lod0 = detail(0, "include_lod0", 0);
 
-i@is_lod0_passthrough = (iteration == 0 && include_lod0 == 1) ? 1 : 0;
+int actual_index = iteration;
+if (include_lod0 == 0) {
+    actual_index = iteration + 1;
+}
+
+i@lod_index = actual_index;
+
+float pcts[] = detail(0, "lod_pcts", 0);
+
+f@lod_target_percent = (iteration < len(pcts)) ? pcts[iteration] : 100.0;
+
+i@is_lod0_passthrough = (actual_index == 0) ? 1 : 0;
+
+int merges[] = detail(0, "lod_merges", 0);
+i@atlas_merge = (iteration < len(merges)) ? merges[iteration] : 1;
