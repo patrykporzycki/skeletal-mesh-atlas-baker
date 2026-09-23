@@ -1,0 +1,25 @@
+int include_lod0 = chi("../include_lod0");
+int num_lods = chi("../lod_levels");
+
+if (include_lod0 == 0 && num_lods == 0) {
+    include_lod0 = 1;
+}
+
+int total = include_lod0 + num_lods;
+
+i@total_lod_iterations = total;
+i@include_lod0 = include_lod0;
+i@num_lods = num_lods;
+
+
+float pcts[];
+
+if (include_lod0) {
+    append(pcts, 100.0);
+}
+
+for (int i = 1; i <= num_lods; i++) {
+    append(pcts, chf(sprintf("../lod_pct%d", i)));
+}
+
+f[]@lod_pcts = pcts;

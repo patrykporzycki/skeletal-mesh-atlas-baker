@@ -1,0 +1,9 @@
+int iteration = detail(1, "iteration", 0);
+float pcts[] = detail(0, "lod_pcts", 0);
+
+i@lod_index = iteration;
+f@lod_target_percent = (iteration < len(pcts)) ? pcts[iteration] : 50.0;
+
+int include_lod0 = detail(0, "include_lod0", 0);
+
+i@is_lod0_passthrough = (iteration == 0 && include_lod0 == 1) ? 1 : 0;

@@ -323,7 +323,7 @@ def sync_vertex_attribs():
 def sync_uv_channels():
     hda = hou.pwd()
     items = []
-    source = hda.node("null_reduced_geo")
+    source = hda.node("null_original_with_mats")
     if source is not None:
         try:
             geo = source.geometry()

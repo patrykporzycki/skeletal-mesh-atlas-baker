@@ -1,0 +1,12 @@
+int lod = i@lod_index;
+int show_this_lod = 0;
+
+if (lod == 0) {
+    show_this_lod = chi("../_preview_lod0");
+} else {
+    show_this_lod = chi(sprintf("../preview_lod%d", lod));
+}
+
+if (show_this_lod == 0) {
+    removeprim(0, @primnum, 1);
+}
