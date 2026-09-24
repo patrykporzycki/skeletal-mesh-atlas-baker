@@ -1,0 +1,9 @@
+int apply_merge = detail(0, "atlas_merge", 0);
+int region_id = prim(0, "uv_region_id", @primnum);
+string uv_ch = chs("../uv_channel");
+string backup = uv_ch + "_original";
+
+if (apply_merge == 0 || region_id < 1) {
+    vector uv_original = vertex(0, backup, @vtxnum);
+    setvertexattrib(0, uv_ch, @vtxnum, -1, uv_original, "set");
+}

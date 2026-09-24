@@ -1,0 +1,5 @@
+int apply_merge = detail(0, "atlas_merge", 0);
+
+if (apply_merge == 1 && i@uv_region_id >= 1) {
+    s@fbx_material_name = sprintf("atlas_%d", i@uv_region_id);
+}
