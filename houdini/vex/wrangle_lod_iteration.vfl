@@ -17,3 +17,6 @@ i@is_lod0_passthrough = (actual_index == 0) ? 1 : 0;
 
 int merges[] = detail(0, "lod_merges", 0);
 i@atlas_merge = (iteration < len(merges)) ? merges[iteration] : 1;
+
+int morphs[] = detail(0, "lod_morphs", 0);
+i@keep_morphs = (iteration < len(morphs)) ? morphs[iteration] : 1;

@@ -1,0 +1,7 @@
+int near = nearpoint(1, @P, 0.01);
+if (near >= 0) {
+    v@delta = point(1, "delta", near);
+} else {
+    v@delta = {0, 0, 0};
+}
+i@id = @ptnum;

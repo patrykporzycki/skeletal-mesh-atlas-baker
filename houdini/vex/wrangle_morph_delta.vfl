@@ -1,0 +1,4 @@
+s@blendshape_channel = prim(1, "blendshape_channel", 0);
+vector base_position = point(2, "P", i@id);
+v@delta = v@P - base_position;
+@P = base_position;

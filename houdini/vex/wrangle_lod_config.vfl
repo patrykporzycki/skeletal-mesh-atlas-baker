@@ -13,13 +13,17 @@ i@num_lods = num_lods;
 
 
 float pcts[];
+int morphs[];
 
 if (include_lod0) {
     append(pcts, 100.0);
+    append(morphs, 1);
 }
 
 for (int i = 1; i <= num_lods; i++) {
     append(pcts, chf(sprintf("../lod_pct%d", i)));
+    append(morphs, chi(sprintf("../morph_targets%d", i)));
 }
 
 f[]@lod_pcts = pcts;
+i[]@lod_morphs = morphs;
