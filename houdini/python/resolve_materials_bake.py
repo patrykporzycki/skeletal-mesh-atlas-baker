@@ -1,13 +1,11 @@
-import re, hou
+import hou, os
 
 node = hou.pwd()
 geo = node.geometry()
 hda = node.parent()
 mod = hda.hdaModule()
-SLOTS = mod.SLOTS
 CHANNEL_OVERRIDE_PARMS = mod.CHANNEL_OVERRIDE_PARMS
 DEFAULT_CHANNEL = mod.DEFAULT_CHANNEL
-CHANNEL_INDEX = mod.CHANNEL_INDEX
 TYPE_NORMALIZE = mod.TYPE_NORMALIZE
 CHANNEL_NORMALIZE = mod.CHANNEL_NORMALIZE
 
@@ -42,29 +40,21 @@ for i in range(1, count + 1):
             channel = CHANNEL_NORMALIZE.get(channel, channel)
             if not texture:
                 continue
+            if not os.path.exists(texture):
+                node.addWarning("Brak pliku: %s" % texture)
+                continue
             entry[slot_type] = texture
             channel_key = CHANNEL_OVERRIDE_PARMS.get(slot_type)
             if channel_key:
                 entry[channel_key] = channel
     overrides[name] = entry
 
-mats_net = hou.node("/mat")
-shader = None
-
 all_slots_names = set()
 
 for mat in sorted(mats):
     resolved = {}
 
-    clean = re.sub(r"[^a-zA-Z0-9_]", "_", mat)
-    shader = mats_net.node("mat_" + clean)
-    if shader is None:
-        shader = mats_net.createNode("principledshader::2.0", "mat_" + clean)
-
     override = overrides.get(mat, {})
-
-    inner_count = 0
-    mp = hda.parm("texture_slots%d" % (sorted(mats).index(mat) + 1))
 
     for slot_name, path in override.items():
         if slot_name.startswith("_") or slot_name.endswith("_channel"):
@@ -75,27 +65,33 @@ for mat in sorted(mats):
         is_tbn = 1 if slot_name in TBN_SLOTS else 0
         resolved[slot_name] = (path, ch_idx, is_tbn)
 
-    bc = resolved.get("base_color")
-    shader.parm("basecolor_useTexture").set(1 if bc else 0)
-    shader.parm("basecolorr").set(1.0)
-    shader.parm("basecolorg").set(1.0)
-    shader.parm("basecolorb").set(1.0)
-    shader.parm("basecolor_usePointColor").set(0)
-    shader.parm("basecolor_texture").set(bc[0] if bc else "")
-    norm = resolved.get("normal")
-    shader.parm("baseNormal_useTexture").set(1 if norm else 0)
-    shader.parm("baseNormal_texture").set(norm[0] if norm else "")
-    rough = resolved.get("roughness")
-    shader.parm("rough_useTexture").set(1 if rough else 0)
-    shader.parm("rough_texture").set(rough[0] if rough else "")
-    rough_ch = 1 if (not rough or rough[1] < 0) else (rough[1] + 1)
-    shader.parm("rough_monoChannel").set(rough_ch)
-    metal = resolved.get("metallic")
-    shader.parm("metallic_useTexture").set(1 if metal else 0)
-    shader.parm("metallic_texture").set(metal[0] if metal else "")
-    metal_ch = 1 if (not metal or metal[1] < 0) else (metal[1] + 1)
-    shader.parm("metallic_monoChannel").set(metal_ch)
+    mat_prims = [p for p in geo.prims() if p.attribValue("fbx_material_name") == mat]
+
+    for slot_name, (path, ch_idx, is_tbn) in resolved.items():
+        all_slots_names.add(slot_name)
+        attr_path = "tex_" + slot_name
+        attr_ch = "tex_" + slot_name + "_ch"
+        attr_tbn = "tex_" + slot_name + "_tbn"
+
+        if not geo.findPrimAttrib(attr_path):
+            geo.addAttrib(hou.attribType.Prim, attr_path, "")
+        if not geo.findPrimAttrib(attr_ch):
+            geo.addAttrib(hou.attribType.Prim, attr_ch, -1)
+        if not geo.findPrimAttrib(attr_tbn):
+            geo.addAttrib(hou.attribType.Prim, attr_tbn, 0)
+        for prim in mat_prims:
+            prim.setAttribValue(attr_path, path)
+            prim.setAttribValue(attr_ch, ch_idx)
+            prim.setAttribValue(attr_tbn, is_tbn)
 
 if not geo.findGlobalAttrib("bake_slots"):
     geo.addArrayAttrib(hou.attribType.Global, "bake_slots", hou.attribData.String, 1)
 geo.setGlobalAttribValue("bake_slots", list(sorted(all_slots_names)))
+
+
+if not geo.findPrimAttrib("material_id"):
+    geo.addAttrib(hou.attribType.Prim, "material_id", -1)
+for idx, mat in enumerate(sorted(mats)):
+    for prim in geo.prims():
+        if prim.attribValue("fbx_material_name") == mat:
+            prim.setAttribValue("material_id", idx)
