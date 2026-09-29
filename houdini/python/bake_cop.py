@@ -33,6 +33,7 @@ def _make_branch(copnet, raster, name, tex_path, ch):
 
     sample.setInput(0, raster, 0)
     sample.setInput(2, file, 0)
+    sample.parm("uvspace").set("texture")
 
     out = sample
 
