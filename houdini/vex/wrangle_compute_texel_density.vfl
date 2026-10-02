@@ -1,0 +1,62 @@
+float target = 0;
+int resolution = chi("../resolution");
+
+int primitives = nprimitives(0);
+
+if (!chi("../normalize_texel_density")) {
+    for (int i = 0; i < primitives; i++) {
+        setprimattrib(0, "texel_scale", i, 1.0);
+    }
+    return;
+}
+
+float world_size[], uv_size[];
+
+int max_island_number = 0;
+for (int i = 0; i < primitives; i++) {
+    int c = prim(0, "island", i);
+    if (c >= max_island_number) max_island_number = c + 1;
+}
+
+resize(world_size, max_island_number);
+resize(uv_size, max_island_number);
+
+for(int j=0; j < primitives; j++) {
+    int c = prim(0, "island", j);
+    float world_area = prim(0, "area", j);
+
+
+    int pv[] = primvertices(0, j);
+
+    float pts_length = len(pv);
+
+    if (pts_length < 3 )
+        continue;
+
+    vector uv0 = vertex(0, "uv", pv[0]);
+    float uv_area = 0.0;
+    for (int k = 1; k < (pts_length - 1); k++) {
+        vector uv1 = vertex(0, "uv", pv[k]);
+        vector uv2 = vertex(0,  "uv", pv[k + 1]);
+        uv_area += length(cross(uv1 - uv0, uv2 - uv0) * 0.5);
+    }
+
+    world_size[c] += world_area;
+    uv_size[c] += uv_area;
+}
+
+if (chi("../target_density_mode") == 0) {
+    float total_world = sum(world_size);
+    float total_uv = sum(uv_size);
+    target = resolution * sqrt(total_uv / total_world);
+} else {
+    target = chf("../target_density") * 100;
+}
+
+for (int l = 0; l < primitives; l++) {
+    int c = prim(0, "island", l);
+    float density = resolution * sqrt(uv_size[c] / max(world_size[c], 1e-6));
+    float scale = target / density;
+    setprimattrib(0, "texel_scale", l, scale);
+}
+
