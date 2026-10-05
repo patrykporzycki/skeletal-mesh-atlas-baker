@@ -1,0 +1,36 @@
+int rect_count = chi("../rects");
+int primitives = nprimitives(0);
+int unpacked = 0;
+
+for (int p = 0; p < primitives; p++) {
+    int region = prim(0, "uv_region_id", p) - 1;
+
+    float min_x = 0.0;
+    float min_y = 0.0;
+    float max_x = 1.0;
+    float max_y = 1.0;
+
+    if (region >= 0 && region < rect_count) {
+        float center_x = chf(sprintf("../rect_center%dx", region));
+        float center_y = chf(sprintf("../rect_center%dy", region));
+        float size_x = chf(sprintf("../rect_size%dx", region));
+        float size_y = chf(sprintf("../rect_size%dy", region));
+
+        min_x = max(0.0, center_x - size_x * 0.5);
+        min_y = max(0.0, center_y - size_y * 0.5);
+        max_x = min(1.0, center_x + size_x * 0.5);
+        max_y = min(1.0, center_y + size_y * 0.5);
+    }
+
+    int pv[] = primvertices(0, p);
+
+    for (int a = 0; a < len(pv); a++) {
+        vector uv = vertex(0, "uv", pv[a]);
+        if (uv.x < min_x || uv.x > max_x || uv.y < min_y || uv.y > max_y) {
+            unpacked++;
+            break;
+        }
+    }
+}
+
+i@unpacked = unpacked;
