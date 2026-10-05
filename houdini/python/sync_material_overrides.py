@@ -23,7 +23,7 @@ def dev_view_uv(hda_node):
         node.setRenderFlag(True)
 
 def repack_uv(hda_node):
-    uvs = (hda_node.node("uvlayout_max"), hda_node.node("uvlayout_fixed"))
+    uvs = (hda_node.node("uvlayout_max"), hda_node.node("uvlayout_fixed"), hda_node.node("uvlayout_rects"))
     for uv in uvs:
         if uv is None:
             return
@@ -97,7 +97,7 @@ def create_slot_type_menu(parm):
 
 
 def sync_rects_to_uv(hda_node):
-    uvs = (hda_node.node("uvlayout_max"), hda_node.node("uvlayout_fixed"))
+    uvs = (hda_node.node("uvlayout_max"), hda_node.node("uvlayout_fixed"), hda_node.node("uvlayout_rects"))
     for uv in uvs:
         if uv is None:
             return
