@@ -23,9 +23,14 @@ def dev_view_uv(hda_node):
         node.setRenderFlag(True)
 
 def repack_uv(hda_node):
-    uvlayout = hda_node.node("uvlayout1")
-    if uvlayout is not None:
-        uvlayout.parm("randseed").set(random.randint(0, 100000))
+    uvs = (hda_node.node("uvlayout_max"), hda_node.node("uvlayout_fixed"))
+    for uv in uvs:
+        if uv is None:
+            return
+
+    for uv in uvs:
+        if uv is not None:
+            uv.parm("randseed").set(random.randint(0, 100000))
 
     filecache = hda_node.node("filecache_uv")
     if filecache is None:
@@ -92,28 +97,32 @@ def create_slot_type_menu(parm):
 
 
 def sync_rects_to_uv(hda_node):
-    uv = hda_node.node("uvlayout1")
-    if uv is None:
-        return
+    uvs = (hda_node.node("uvlayout_max"), hda_node.node("uvlayout_fixed"))
+    for uv in uvs:
+        if uv is None:
+            return
     count = hda_node.parm("rects").evalAsInt()
-    uv.parm("rects").set(count + 1)
 
-    uv.parm("rect_use0").set(1)
-    uv.parm("rect_center0x").set(0.01)
-    uv.parm("rect_center0y").set(0.01)
-    uv.parm("rect_size0x").set(0.02)
-    uv.parm("rect_size0y").set(0.02)
+    for uv in uvs:
+        uv.parm("rects").set(count + 1)
+
+        uv.parm("rect_use0").set(1)
+        uv.parm("rect_center0x").set(0.01)
+        uv.parm("rect_center0y").set(0.01)
+        uv.parm("rect_size0x").set(0.02)
+        uv.parm("rect_size0y").set(0.02)
 
     for uv_index in range(1, count + 1):
         hda_index = uv_index - 1
-        uv.parm("rect_use%d" % uv_index).setExpression("ch('../rect_use%d')" % hda_index)
-        for axis in ("x", "y"):
-            uv.parm("rect_size%d%s" % (uv_index, axis)).setExpression(
-                "min(1, ch('../rect_center%d%s') + ch('../rect_size%d%s')/2) - max(0, ch('../rect_center%d%s') - ch('../rect_size%d%s')/2)" % (hda_index, axis, hda_index, axis, hda_index, axis, hda_index, axis)
-            )
-            uv.parm("rect_center%d%s" % (uv_index, axis)).setExpression(
-                "(max(0, ch('../rect_center%d%s') - ch('../rect_size%d%s')/2) + min(1, ch('../rect_center%d%s') + ch('../rect_size%d%s')/2)) / 2" % (hda_index, axis, hda_index, axis, hda_index, axis, hda_index, axis)
-            )
+        for uv in uvs:
+            uv.parm("rect_use%d" % uv_index).setExpression("ch('../rect_use%d')" % hda_index)
+            for axis in ("x", "y"):
+                uv.parm("rect_size%d%s" % (uv_index, axis)).setExpression(
+                    "min(1, ch('../rect_center%d%s') + ch('../rect_size%d%s')/2) - max(0, ch('../rect_center%d%s') - ch('../rect_size%d%s')/2)" % (hda_index, axis, hda_index, axis, hda_index, axis, hda_index, axis)
+                )
+                uv.parm("rect_center%d%s" % (uv_index, axis)).setExpression(
+                    "(max(0, ch('../rect_center%d%s') - ch('../rect_size%d%s')/2) + min(1, ch('../rect_center%d%s') + ch('../rect_size%d%s')/2)) / 2" % (hda_index, axis, hda_index, axis, hda_index, axis, hda_index, axis)
+                )
 
 def start_paint(hda_node):
     paint_node = hda_node.node("paint_preserve")
