@@ -1,0 +1,3 @@
+if(s@fbx_material_name == "") {
+    removeprim(0, @primnum,1);
+}

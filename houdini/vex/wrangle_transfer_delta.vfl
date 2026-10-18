@@ -1,6 +1,20 @@
-int near = nearpoint(1, @P, 0.01);
-if (near >= 0) {
+int has_part = haspointattrib(0, "part_id") && haspointattrib(1, "part_id");
+
+if (!has_part) {
+    int near = nearpoint(1, @P, 0.01);
+    if (near >= 0) {
     v@delta = point(1, "delta", near);
+    } else {
+        v@delta = {0, 0, 0};
+    }
+    i@id = @ptnum;
+    return;
+}
+
+int part = point(0, "part_id", @ptnum);
+int near_part = nearpoint(1, sprintf("@part_id=%d", part), @P, 0.01);
+if (near_part >= 0) {
+    v@delta = point(1, "delta", near_part);
 } else {
     v@delta = {0, 0, 0};
 }

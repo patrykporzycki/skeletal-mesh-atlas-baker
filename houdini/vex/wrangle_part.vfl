@@ -1,0 +1,3 @@
+int index = ch("../mesh_index");
+i@part_id = index;
+i@mesh_index = index;

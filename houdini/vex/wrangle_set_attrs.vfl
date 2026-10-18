@@ -1,5 +1,4 @@
-s@blendshape_channel = prim(1, "blendshape_channel", 0);
-s@blendshape_name = prim(1, "blendshape_name", 0);
-vector base_position = point(2, "P", i@id);
-v@delta = v@P - base_position;
-@P = base_position;
+s@name = prim(1, "name", 0);
+s@blendshape_channel = point(2, "blendshape_channel", 0);
+s@blendshape_name = point(2, "blendshape_name", 0);
+setprimgroup(0, "_3d_hidden_primitives", @primnum, 1);

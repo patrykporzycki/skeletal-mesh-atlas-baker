@@ -1,0 +1,19 @@
+int num_of_points = npoints(0);
+int max_id = -1;
+for (int i = 0; i < num_of_points; i++) {
+    int fused_points[] = point(0, "original_id", i);
+    foreach (int id; fused_points) {
+        max_id = max(max_id, id);
+    }
+}
+
+int remap[] = {};
+resize(remap, max_id + 1);
+
+for (int k = 0; k < num_of_points; k++) {
+    int fused_points[] = point(0, "original_id", k);
+    foreach (int id; fused_points) {
+        remap[id] = k;
+    }
+}
+i[]@morph_remap = remap;
