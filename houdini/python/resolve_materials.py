@@ -18,35 +18,46 @@ fbx_material_name = geo.findPrimAttrib("fbx_material_name")
 if fbx_material_name is None:
     raise hou.NodeError("Couldn't find materials!")
 
+has_part = geo.findPointAttrib("part_id") is not None
+
+def part_of(prim):
+    if has_part and len(prim.points()) > 0:
+        return prim.points()[0].attribValue("part_id")
+    return 0
+
 mats = set()
 for prim in geo.prims():
     name = prim.attribValue("fbx_material_name")
     if name:
-        mats.add(name)
+        mats.add((part_of(prim), name))
 
 overrides = {}
-multiparm = hda.parm("material_overrides")
-count = multiparm.evalAsInt() if multiparm else 0
-for i in range(1, count + 1):
-    name = hda.parm("material_name%d" % i).eval()
-    if not name:
+meshes = hda.parm("meshes")
+mesh_count = meshes.evalAsInt() if meshes else 0
+for i in range(1, mesh_count + 1):
+    inner = hda.parm("material_overrides%d" % i)
+    if inner is None:
         continue
-    entry = {}
-    inner = hda.parm("texture_slots%d" % i)
-    if inner is not None:
-        for j in range(1, inner.evalAsInt() + 1):
-            slot_type = hda.parm("slot_type%d_%d" % (i, j)).eval()
-            slot_type = TYPE_NORMALIZE.get(slot_type, slot_type)
-            texture = hda.parm("slot_texture%d_%d" % (i, j)).eval()
-            channel = hda.parm("slot_channel%d_%d" % (i, j)).eval()
-            channel = CHANNEL_NORMALIZE.get(channel, channel)
-            if not texture:
-                continue
-            entry[slot_type] = texture
-            channel_key = CHANNEL_OVERRIDE_PARMS.get(slot_type)
-            if channel_key:
-                entry[channel_key] = channel
-    overrides[name] = entry
+    for j in range(1, inner.evalAsInt() + 1):
+        name = hda.parm("mat_name%d_%d" % (i, j)).eval()
+        if not name:
+            continue
+        entry = {}
+        ts = hda.parm("texture_slots%d_%d" % (i, j))
+        if ts is not None:
+            for k in range(1, ts.evalAsInt() + 1):
+                slot_type = hda.parm("slot_type%d_%d_%d" % (i, j, k)).eval()
+                slot_type = TYPE_NORMALIZE.get(slot_type, slot_type)
+                texture = hda.parm("slot_texture%d_%d_%d" % (i, j, k)).eval()
+                channel = hda.parm("slot_channel%d_%d_%d" % (i, j, k)).eval()
+                channel = CHANNEL_NORMALIZE.get(channel, channel)
+                if not texture:
+                    continue
+                entry[slot_type] = texture
+                channel_key = CHANNEL_OVERRIDE_PARMS.get(slot_type)
+                if channel_key:
+                    entry[channel_key] = channel
+        overrides[(i - 1, name)] = entry
 
 mats_net = hou.node("/mat")
 shader = None
@@ -54,17 +65,16 @@ shader = None
 all_slots_names = set()
 
 for mat in sorted(mats):
+    part, name = mat
     resolved = {}
 
-    clean = re.sub(r"[^a-zA-Z0-9_]", "_", mat)
-    shader = mats_net.node("mat_" + clean)
+    clean = re.sub(r"[^a-zA-Z0-9_]", "_", name)
+    shader_name = "mat_%d_%s" % (part, clean)
+    shader = mats_net.node(shader_name)
     if shader is None:
-        shader = mats_net.createNode("principledshader::2.0", "mat_" + clean)
+        shader = mats_net.createNode("principledshader::2.0", shader_name)
 
     override = overrides.get(mat, {})
-
-    inner_count = 0
-    mp = hda.parm("texture_slots%d" % (sorted(mats).index(mat) + 1))
 
     for slot_name, path in override.items():
         if slot_name.startswith("_") or slot_name.endswith("_channel"):

@@ -1,5 +1,11 @@
 int rect_count = chi("../rects");
 string material_name = s@fbx_material_name;
+int pid = 0;
+if (haspointattrib(0, "part_id")) {
+    int p0 = primpoint(0, @primnum, 0);
+    pid = point(0, "part_id", p0);
+}
+string material_key = sprintf("%d:%s", pid, material_name);
 
 i@uv_region_id = -1;
 
@@ -11,7 +17,7 @@ for (int rect_index = 0; rect_index < rect_count; rect_index++)
     {
         string assigned = chs(sprintf("../material_name%d_%d", rect_index, mat_index));
 
-        if (assigned == material_name)
+        if (assigned == material_key)
         {
             i@uv_region_id = rect_index + 1;
             break;

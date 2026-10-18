@@ -1,6 +1,11 @@
 string material = s@fbx_material_name;
 string clean = re_replace("[^a-zA-Z0-9_]", "_", material);
-s@shop_materialpath = "/mat/mat_" + clean;
+int pid = 0;
+if (haspointattrib(0, "part_id")) {
+    int p0 = primpoint(0, @primnum, 0);
+    pid = point(0, "part_id", p0);
+}
+s@shop_materialpath = sprintf("/mat/mat_%d_%s", pid, clean);
 
 
 if (hasprimattrib(0, "material_override")) {

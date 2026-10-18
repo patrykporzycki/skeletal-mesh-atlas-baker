@@ -1,4 +1,4 @@
-import hou, json, re, random
+import hou, re, random
 
 CHANNEL_OVERRIDE_PARMS  = {
     "roughness": "roughness_channel",
@@ -44,11 +44,16 @@ def create_rect_materials_menu(parm):
     current_value = parm.eval()
 
     materials = []
-    count = node.parm("material_overrides").evalAsInt()
-    for index in range(1, count + 1):
-        name = node.parm("material_name%d" % index).eval()
-        if name:
-            materials.append(name)
+    meshes = node.parm("meshes")
+    mesh_count = meshes.evalAsInt() if meshes else 0
+    for i in range(1, mesh_count + 1):
+        inner = node.parm("material_overrides%d" % i)
+        if inner is None:
+            continue
+        for j in range(1, inner.evalAsInt() + 1):
+            name = node.parm("mat_name%d_%d" % (i, j)).eval()
+            if name:
+                materials.append((i - 1, name))
     materials = sorted(set(materials))
 
     used = set()
@@ -59,9 +64,11 @@ def create_rect_materials_menu(parm):
                 used.add(value)
 
     menu = ["", "(none)"]
-    for material in materials:
-        if material == current_value or material not in used:
-            menu += [material, material]
+    for part, name in materials:
+        key = "%d:%s" % (part, name)
+        label = "mesh%d / %s" % (part, name)
+        if key == current_value or key not in used:
+            menu += [key, label]
     return menu
 
 def create_slot_type_menu(parm):
@@ -97,7 +104,7 @@ def create_slot_type_menu(parm):
 
 
 def sync_rects_to_uv(hda_node):
-    uvs = (hda_node.node("uvlayout_max"), hda_node.node("uvlayout_fixed"), hda_node.node("uvlayout_rects"))
+    uvs = (hda_node.node("uvlayout_max"), hda_node.node("uvlayout_fixed"))
     for uv in uvs:
         if uv is None:
             return
@@ -225,19 +232,19 @@ def hide_preview(hda_node):
             return
 
 def sync_material_overrides(hda_node):
-    store = hda_node.parm("material_overrides_store").eval()
-    try:
-        all_data = json.loads(store) if store else {}
-    except ValueError:
-        all_data = {}
-
-    fbx_file = hda_node.parm("fbx_input_file").eval()
-    prev_fbx = all_data.get("_last_fbx", "")
-    fbx_changed = bool(prev_fbx) and prev_fbx != fbx_file
-
-    input_node = hda_node.node("fuse_fbx_import")
+    input_node = hda_node.node("switch_skin")
+    if input_node is not None:
+        try:
+            geometry = input_node.geometry()
+        except hou.Error:
+            geometry = None
+        if geometry is None or geometry.findPrimAttrib("fbx_material_name") is None:
+            input_node = hda_node.node("fuse_fbx_import")
+    else:
+        input_node = hda_node.node("fuse_fbx_import")
     if input_node is None:
         return
+    input_node.cook(force=True)
     try:
         geo = input_node.geometry()
     except hou.Error:
@@ -246,54 +253,88 @@ def sync_material_overrides(hda_node):
         print("[sync_material_overrides] brak fbx_material_name na geometrii!")
         return
 
-    materials = sorted(set(
-        p.attribValue("fbx_material_name")
-        for p in geo.prims()
-        if p.attribValue("fbx_material_name")
-    ))
+    has_part = geo.findPointAttrib("part_id") is not None
+    has_name = geo.findPrimAttrib("name") is not None
 
-    if fbx_changed:
-        result = {}
-        count = hda_node.parm("material_overrides").evalAsInt()
-        for i in range(1, count + 1):
-            name = hda_node.parm("material_name%d" % i).eval()
+    mesh_info = {}
+    for prim in geo.prims():
+        part = 0
+        if has_part and len(prim.points()) > 0:
+            part = prim.points()[0].attribValue("part_id")
+        info = mesh_info.setdefault(part, {"name": "", "materials": set()})
+        if has_name and not info["name"]:
+            nm = prim.attribValue("name")
+            if nm:
+                info["name"] = nm
+        name = prim.attribValue("fbx_material_name")
+        if name:
+            info["materials"].add(name)
+
+    old = {}
+    old_names = {}
+    for i in range(1, hda_node.parm("meshes").evalAsInt() + 1):
+        old_names[i - 1] = hda_node.parm("mesh_name%d" % i).eval()
+        inner = hda_node.parm("material_overrides%d" % i)
+        if inner is None:
+            continue
+        for j in range(1, inner.evalAsInt() + 1):
+            name = hda_node.parm("mat_name%d_%d" % (i, j)).eval()
             if not name:
                 continue
-            inner = hda_node.parm("texture_slots%d" % i)
             slots = []
+            inner = hda_node.parm("texture_slots%d_%d" % (i, j))
             if inner is not None:
-                for j in range(1, inner.evalAsInt() + 1):
+                for k in range(1, inner.evalAsInt() + 1):
                     slots.append({
-                        "type": hda_node.parm("slot_type%d_%d" % (i, j)).eval(),
-                        "texture": hda_node.parm("slot_texture%d_%d" % (i, j)).eval(),
-                        "channel": hda_node.parm("slot_channel%d_%d" % (i, j)).eval(),
+                        "type": hda_node.parm("slot_type%d_%d_%d" % (i, j, k)).eval(),
+                        "texture": hda_node.parm("slot_texture%d_%d_%d" % (i, j, k)).eval(),
+                        "channel": hda_node.parm("slot_channel%d_%d_%d" % (i, j, k)).eval(),
                     })
-            result[name] = slots
-        all_data[prev_fbx] = result
-    all_data["_last_fbx"] = fbx_file
+            old[(i - 1, name)] = slots
 
-    hda_node.parm("material_overrides").lock(False)
-    hda_node.parm("material_overrides").set(len(materials))
-    hda_node.parm("material_overrides").lock(True)
+    if mesh_info:
+        mesh_total = max(mesh_info) + 1
+    else:
+        mesh_total = max(1, len(old_names))
 
-    saved = all_data.get(fbx_file, {}) if fbx_changed else {}
+    p = hda_node.parm("meshes")
+    p.lock(False)
+    p.set(mesh_total)
+    p.lock(True)
 
-    for index, material_name in enumerate(materials, 1):
-        hda_node.parm("material_name%d" % index).lock(False)
-        hda_node.parm("material_name%d" % index).set(material_name)
-        hda_node.parm("material_name%d" % index).lock(True)
+    for part in range(mesh_total):
+        idx = part + 1
+        info = mesh_info.get(part, {"name": "", "materials": set()})
 
-        if fbx_changed:
-            slots = saved.get(material_name, [])
-            hda_node.parm("texture_slots%d" % index).set(len(slots))
-            for j, slot in enumerate(slots, 1):
+        p = hda_node.parm("mesh_name%d" % idx)
+        p.lock(False)
+        p.set(info["name"] if info["name"] else old_names.get(part, ""))
+        p.lock(True)
+
+        names = sorted(info["materials"])
+        p = hda_node.parm("material_overrides%d" % idx)
+        if p is None:
+            continue
+        p.lock(False)
+        p.set(len(names))
+        p.lock(True)
+
+        for j, name in enumerate(names, 1):
+            p = hda_node.parm("mat_name%d_%d" % (idx, j))
+            p.lock(False)
+            p.set(name)
+            p.lock(True)
+
+            slots = old.get((part, name), [])
+            p = hda_node.parm("texture_slots%d_%d" % (idx, j))
+            p.lock(False)
+            p.set(len(slots))
+            for k, slot in enumerate(slots, 1):
                 if not isinstance(slot, dict):
                     continue
-                hda_node.parm("slot_type%d_%d" % (index, j)).set(slot.get("type", "base_color"))
-                hda_node.parm("slot_texture%d_%d" % (index, j)).set(slot.get("texture", ""))
-                hda_node.parm("slot_channel%d_%d" % (index, j)).set(slot.get("channel", "RGBA"))
-
-    hda_node.parm("material_overrides_store").set(json.dumps(all_data))
+                hda_node.parm("slot_type%d_%d_%d" % (idx, j, k)).set(slot.get("type", "base_color"))
+                hda_node.parm("slot_texture%d_%d_%d" % (idx, j, k)).set(slot.get("texture", ""))
+                hda_node.parm("slot_channel%d_%d_%d" % (idx, j, k)).set(slot.get("channel", "RGBA"))
 
     dev_view_3d(hda_node)
 
@@ -328,23 +369,29 @@ def sync_vertex_attribs():
 def sync_uv_channels():
     hda = hou.pwd()
     items = []
-    source = hda.node("null_original_with_mats")
+
+    source = hda.node("detect_lods")
+    if source is None:
+        source = hda.node("null_original_with_mats")
+
     if source is not None:
         try:
             geo = source.geometry()
-            if geo is None:
-                return ["none", "No uv channel"]
-            for attrib in geo.vertexAttribs():
-                name = attrib.name()
-                if name == "uv" or (name.startswith("uv") and name[2:].isdigit()):
-                    items.append(name)
+            if geo is not None:
+                seen = set()
+                for attrib in list(geo.vertexAttribs()) + list(geo.pointAttribs()):
+                    name = attrib.name()
+                    if name == "uv" or (len(name) > 2 and name.startswith("uv") and name[2:].isdigit()):
+                        if name not in seen:
+                            items.append(name)
+                            seen.add(name)
         except hou.Error:
             pass
 
-    items = sorted(set(items), key=lambda n: 0 if n == "uv" else int(n[2:]))
-
     if not items:
         return ["none", "No uv channel"]
+
+    items = sorted(set(items), key=lambda n: (0, 0) if n == "uv" else (1, int(n[2:])))
 
     menu = []
     for item in items:
@@ -358,5 +405,45 @@ def bake_textures(hda_node):
         return
     baker.parm("execute").pressButton()
 
+def create_lod_source_menu(parm):
+    node = parm.node()
+    detect = node.node("detect_lods")
+    max_lod = 0
+    if detect is not None:
+        try:
+            geo = detect.geometry()
+            if geo is not None:
+                for prim in geo.prims():
+                    max_lod = max(max_lod, int(prim.attribValue("source_lod")))
+        except hou.Error:
+            pass
+    menu = ["0", "Generate (polyreduce)"]
+    for i in range(1, max_lod + 1):
+        menu += [str(i), "Import LOD%d" % i]
+    return menu
+
+def import_lods(hda_node):
+    detect = hda_node.node("detect_lods")
+    if detect is None:
+        return
+    try:
+        geo = detect.geometry()
+    except hou.Error:
+        return
+    if geo is None:
+        return
+
+    max_lod = 0
+    for prim in geo.prims():
+        max_lod = max(max_lod, int(prim.attribValue("source_lod")))
 
 
+    levels = hda_node.parm("lod_levels")
+    if levels is None:
+        return
+    levels.set(max_lod)
+
+    for i in range(1, max_lod + 1):
+        source = hda_node.parm("lod_source%d" % i)
+        if source is not None:
+            source.set(str(i))
