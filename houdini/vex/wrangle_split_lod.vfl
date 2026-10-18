@@ -1,0 +1,1 @@
+setprimgroup(0, "lod0_group", @primnum, (i@source_lod == 0));

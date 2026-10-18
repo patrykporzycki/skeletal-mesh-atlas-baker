@@ -20,3 +20,11 @@ i@atlas_merge = (iteration < len(merges)) ? merges[iteration] : 1;
 
 int morphs[] = detail(0, "lod_morphs", 0);
 i@keep_morphs = (iteration < len(morphs)) ? morphs[iteration] : 1;
+
+int sources[] = detail(0, "lod_sources", 0);
+int lod_source = (iteration < len(sources)) ? sources[iteration] : 0;
+int is_imported = (lod_source > 0) ? 1 : 0;
+
+setdetailattrib(0, "lod_source", lod_source, "set");
+setdetailattrib(0, "is_imported", is_imported, "set");
+setdetailattrib(0, "bypass_reduce", (actual_index == 0) || is_imported, "set");

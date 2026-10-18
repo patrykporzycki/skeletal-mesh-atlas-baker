@@ -1,0 +1,7 @@
+int is_imported = detail(0, "is_imported", 0);
+int lod_source = detail(0, "lod_source", 0);
+int keep_source_lod = (is_imported) ? lod_source : 0;
+
+if (i@source_lod != keep_source_lod) {
+    removeprim(0, @primnum, 1);
+}

@@ -14,16 +14,30 @@ i@num_lods = num_lods;
 
 float pcts[];
 int morphs[];
+int merges[];
 
 if (include_lod0) {
     append(pcts, 100.0);
     append(morphs, 1);
+    append(merges, chi("../atlas_merge_lod0"));
 }
 
 for (int i = 1; i <= num_lods; i++) {
     append(pcts, chf(sprintf("../lod_pct%d", i)));
     append(morphs, chi(sprintf("../morph_targets%d", i)));
+    append(merges, chi(sprintf("../atlas_merge%d", i)));
 }
 
 f[]@lod_pcts = pcts;
 i[]@lod_morphs = morphs;
+i[]@lod_merges = merges;
+
+
+int sources[];
+if (include_lod0) {
+    append(sources, 0);
+}
+for (int j = 1; j<= num_lods; j++) {
+    append(sources, chi(sprintf("../lod_source%d", j)));
+}
+i[]@lod_sources = sources;
