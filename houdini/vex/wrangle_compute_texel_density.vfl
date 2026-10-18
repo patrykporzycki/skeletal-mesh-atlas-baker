@@ -5,6 +5,11 @@ int mode = chi("../target_density_mode");
 if (mode == 0)
     return;
 
+int rect_count = chi("../rects");
+float region_world[], region_uv[];
+resize(region_world, rect_count + 2);
+resize(region_uv, rect_count + 2);
+
 float world_size[], uv_size[];
 
 int max_island_number = 0;
@@ -52,6 +57,16 @@ for (int k = 0; k < primitives; k++) {
 
     world_size[c] += world_area;
     uv_size[c] += uv_area;
+
+    int region_id = max(0, prim(0, "uv_region_id", k));
+
+    if (region_id > 0) {
+        region_world[region_id] += world_area;
+        region_uv[region_id] += uv_area;
+    }
+
+    region_world[region_id] += world_area;
+    region_uv[region_id] += uv_area;
 }
 
 if (mode == 1 || mode == 2) {
@@ -61,7 +76,8 @@ if (mode == 1 || mode == 2) {
     if (total_uv <= 1e-12 || total_world <= 1e-12)
         return;
 
-    float ref = total_uv / total_world;
+
+    float global_ref = total_uv / total_world;
     int resolution = chi("../resolution");
     float target_density = chf("../target_density") * 100.0;
 
@@ -70,6 +86,8 @@ if (mode == 1 || mode == 2) {
 
         if (uv_size[c] <= 1e-12 || world_size[c] <= 1e-12)
             continue;
+
+        float ref = global_ref;
 
         float s = sqrt(ref / (uv_size[c] / world_size[c]));
 
