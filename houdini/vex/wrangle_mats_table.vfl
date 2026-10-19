@@ -1,0 +1,62 @@
+int mesh_count = chi("../meshes");
+int current_material = 0;
+dict mats_table = {};
+string slots[];
+
+function string normalize_slot(string raw) {
+    if (raw == "0" || raw == "base_color") return "base_color";
+    if (raw == "1" || raw == "normal") return "normal";
+    if (raw == "2" || raw == "roughness") return "roughness";
+    if (raw == "3" || raw == "metallic") return "metallic";
+    return raw;
+}
+
+function int channel_to_int(string raw) {
+    string c = toupper(raw);
+    if (c == "1" || c == "R") return 0;
+    if (c == "2" || c == "G") return 1;
+    if (c == "3" || c == "B") return 2;
+    if (c == "4" || c == "A") return 3;
+    return -1;
+}
+
+for (int mesh = 1; mesh <= mesh_count; mesh++){
+    int material_count = chi(sprintf("../material_overrides%d", mesh));
+
+    for(int material = 1; material <= material_count; material++) {
+
+        string material_name = chs(sprintf("../mat_name%d_%d", mesh, material));
+        if(material_name == "") {
+            continue;
+        }
+
+        dict entry = {};
+        entry["id"] = current_material;
+        current_material++;
+
+        int slot_count = chi(sprintf("../texture_slots%d_%d", mesh, material));
+
+        for(int slot_index = 1; slot_index <= slot_count; slot_index++) {
+            string raw_slot = chs(sprintf("../slot_type%d_%d_%d", mesh, material, slot_index));
+            string slot = normalize_slot(raw_slot);
+            string texture = chs(sprintf("../slot_texture%d_%d_%d", mesh, material, slot_index));
+
+            if (slot == "" || texture == "") continue;
+
+            string raw_channel = chs(sprintf("../slot_channel%d_%d_%d", mesh, material, slot_index));
+            int is_channel_slot = (slot == "roughness" || slot == "metallic");
+            int ch_idx = is_channel_slot ? channel_to_int(raw_channel) : -1;
+
+            entry[slot + "_path"] = texture;
+            entry[slot + "_ch"] = ch_idx;
+            if (slot == "normal") entry[slot + "_tbn"] = 1;
+            else entry[slot + "_tbn"] = 0;
+
+            if (find(slots, slot) < 0) append(slots, slot);
+        }
+        mats_table[sprintf("%d:%s", mesh - 1, material_name)] = entry;
+    }
+}
+
+d@mat_table = mats_table;
+s[]@bake_slots = sort(slots);

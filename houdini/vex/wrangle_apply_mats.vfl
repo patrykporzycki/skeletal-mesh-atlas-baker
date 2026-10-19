@@ -1,0 +1,46 @@
+dict mats_table = detail(0, "mats_table");
+
+int part_id = point(0, "part_id", primpoint(0, @primnum, 0));
+string key = sprintf("%d:%s", part_id, s@fbx_material_name);
+
+s@tex_base_color = "";
+i@tex_base_color_ch = -1;
+i@tex_base_color_tbn = 0;
+
+s@tex_normal = "";
+i@tex_normal_ch = -1;
+i@tex_normal_tbn = 0;
+
+s@tex_roughness = "";
+i@tex_roughness_ch = -1;
+i@tex_roughness_tbn = 0;
+
+s@tex_metallic = "";
+i@tex_metallic_ch = -1;
+i@tex_metallic_tbn = 0;
+
+i@material_id = -1;
+
+if(isvalidindex(mats_table, key)) {
+    dict entry = mats_table[key];
+
+    i@material_id = getcomp(entry, "id", -1);
+
+    s@tex_base_color = getcomp(entry, "base_color_path", "");
+    i@tex_base_color_ch = getcomp(entry, "base_color_ch", -1);
+    i@tex_base_color_tbn = getcomp(entry, "base_color_tbn", 0);
+
+    s@tex_normal = getcomp(entry, "normal_path", "");
+    i@tex_normal_ch = getcomp(entry, "normal_ch", -1);
+    i@tex_normal_tbn = getcomp(entry, "normal_tbn", 0);
+
+    s@tex_roughness = getcomp(entry, "roughness_path", "");
+    i@tex_roughness_ch = getcomp(entry, "roughness_ch", -1);
+    i@tex_roughness_tbn = getcomp(entry, "roughness_tbn", 0);
+
+    s@tex_metallic = getcomp(entry, "metallic_path", "");
+    i@tex_metallic_ch = getcomp(entry, "metallic_ch", -1);
+    i@tex_metallic_tbn = getcomp(entry, "metallic_tbn", 0);
+
+}
+
