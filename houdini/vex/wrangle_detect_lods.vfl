@@ -1,0 +1,3 @@
+string lod_suffix = re_find("[Ll][Oo][Dd][0-9]+$", s@name);
+int source_lod = lod_suffix == "" ? 0 : atoi(re_replace("^[Ll][Oo][Dd]", "", lod_suffix));
+i@source_lod = source_lod;
