@@ -338,63 +338,58 @@ def sync_material_overrides(hda_node):
 
     dev_view_3d(hda_node)
 
+def cache_menu_data(hda, source_name, cache_key, collect):
+    source = hda.node(source_name)
+    if source is not None and not source.needsToCook():
+        try:
+            geometry = source.geometry()
+        except hou.Error:
+            geometry = None
+        if geometry is not None:
+            hda.setCachedUserData(cache_key, collect(geometry))
+    return hda.cachedUserData(cache_key)
+
+def collect_color_names(geometry):
+    names = []
+    for attrib in geometry.pointAttribs() + geometry.vertexAttribs():
+        name = attrib.name()
+        if name == "Cd" or (name.startswith("Cd") and name[2:].isdigit()):
+            names.append(name)
+    return sorted(set(names))
 
 def sync_vertex_attribs():
     hda = hou.pwd()
-    items = []
-    source = hda.node("resolve_materials")
-    if source is not None:
-        try:
-            geo = source.geometry()
-            if geo is None:
-                return ["none", "No vertex color"]
-            for attrib in geo.pointAttribs():
-                name = attrib.name()
-                if name == "Cd" or (name.startswith("Cd") and name[2:].isdigit()):
-                    items.append(name)
-        except hou.Error:
-            pass
 
-    items = sorted(set(items), key=lambda n: 0 if n == "Cd" else int(n[2:]))
-
-    if not items:
+    names = cache_menu_data(hda, "attribpromote_cd_vert_to_point", "vertex_attribs", collect_color_names)
+    if not names:
         return ["none", "No vertex color"]
 
     menu = []
-    for item in items:
+    for item in names:
         menu.append(item)
         menu.append(item)
     return menu
 
+def collect_uv_channels(geometry):
+    names = []
+    seen = set()
+    for attrib in geometry.vertexAttribs() + geometry.pointAttribs():
+        name = attrib.name()
+        if name == "uv" or (len(name) > 2 and name.startswith("uv") and name[2:].isdigit()):
+            if name not in seen:
+                names.append(name)
+                seen.add(name)
+    return sorted(set(names))
+
 def sync_uv_channels():
     hda = hou.pwd()
-    items = []
 
-    source = hda.node("detect_lods")
-    if source is None:
-        source = hda.node("null_original_with_mats")
-
-    if source is not None:
-        try:
-            geo = source.geometry()
-            if geo is not None:
-                seen = set()
-                for attrib in list(geo.vertexAttribs()) + list(geo.pointAttribs()):
-                    name = attrib.name()
-                    if name == "uv" or (len(name) > 2 and name.startswith("uv") and name[2:].isdigit()):
-                        if name not in seen:
-                            items.append(name)
-                            seen.add(name)
-        except hou.Error:
-            pass
-
-    if not items:
-        return ["none", "No uv channel"]
-
-    items = sorted(set(items), key=lambda n: (0, 0) if n == "uv" else (1, int(n[2:])))
+    names = cache_menu_data(hda, "detect_lods", "uv_channels", collect_uv_channels)
+    if not names:
+        return ["none", "No UV channel"]
 
     menu = []
-    for item in items:
+    for item in names:
         menu.append(item)
         menu.append(item)
     return menu
@@ -405,18 +400,22 @@ def bake_textures(hda_node):
         return
     baker.parm("execute").pressButton()
 
+def collect_lod_source(geometry):
+    max_lod = 0
+    try:
+        if geometry is not None:
+            for prim in geometry.prims():
+                max_lod = max(max_lod, int(prim.attribValue("source_lod")))
+    except hou.Error:
+        return max_lod
+    return max_lod
+
 def create_lod_source_menu(parm):
     node = parm.node()
-    detect = node.node("detect_lods")
-    max_lod = 0
-    if detect is not None:
-        try:
-            geo = detect.geometry()
-            if geo is not None:
-                for prim in geo.prims():
-                    max_lod = max(max_lod, int(prim.attribValue("source_lod")))
-        except hou.Error:
-            pass
+    max_lod = cache_menu_data(node, "detect_lods", "lod_source", collect_lod_source)
+    if not max_lod:
+        max_lod = 0
+
     menu = ["0", "Generate (polyreduce)"]
     for i in range(1, max_lod + 1):
         menu += [str(i), "Import LOD%d" % i]
@@ -433,10 +432,7 @@ def import_lods(hda_node):
     if geo is None:
         return
 
-    max_lod = 0
-    for prim in geo.prims():
-        max_lod = max(max_lod, int(prim.attribValue("source_lod")))
-
+    max_lod = max(geo.primIntAttribValues("source_lod"))
 
     levels = hda_node.parm("lod_levels")
     if levels is None:
