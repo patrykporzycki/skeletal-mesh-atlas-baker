@@ -9,6 +9,59 @@ CHANNEL_INDEX = {"RGBA": 1, "R": 1, "G": 2, "B": 3, "A": 4}
 SLOT_TYPE_NAMES = ("base_color", "normal", "roughness", "metallic", "opacity", "custom")
 TYPE_NORMALIZE = {"0":"base_color","1":"normal","2":"roughness","3":"metallic","4":"opacity","5":"custom"}
 CHANNEL_NORMALIZE = {"0":"RGBA","1":"R","2":"G","3":"B","4":"A"}
+CHANNEL_MAP = {"R": 0, "G": 1, "B": 2, "A": 3, "RGBA": -1, "RGB": -1}
+
+def build_preview_shaders(hda_node):
+    materials_network = hou.node("/mat")
+    mesh_count = hda_node.parm("meshes").evalAsInt()
+    for mesh in range(1, mesh_count + 1):
+        material_count_parm = hda_node.parm("material_overrides%d" % mesh)
+        if material_count_parm is None:
+            continue
+        for material in range(1, material_count_parm.evalAsInt() + 1):
+            material_name = hda_node.parm("mat_name%d_%d" % (mesh, material)).eval()
+            if not material_name:
+                continue
+
+            resolved = {}
+            slot_count_parm = hda_node.parm("texture_slots%d_%d" % (mesh, material))
+            slot_count = slot_count_parm.evalAsInt() if slot_count_parm is not None else 0
+            for slot_index in range(1, slot_count + 1):
+                slot_type = hda_node.parm("slot_type%d_%d_%d" % (mesh, material, slot_index)).eval()
+                slot_type = TYPE_NORMALIZE.get(slot_type, slot_type)
+                texture = hda_node.parm("slot_texture%d_%d_%d" % (mesh, material, slot_index)).eval()
+                channel = hda_node.parm("slot_channel%d_%d_%d" % (mesh, material, slot_index)).eval()
+                channel = CHANNEL_NORMALIZE.get(channel, channel)
+                if texture:
+                    resolved[slot_type] = (texture, CHANNEL_MAP.get(channel.upper(), -1))
+
+            clean_name = re.sub(r"[^a-zA-Z0-9_]", "_", material_name)
+            shader_name = "mat_%d_%s" % (mesh - 1, clean_name)
+            shader = materials_network.node(shader_name)
+            if shader is None:
+                shader = materials_network.createNode("principledshader::2.0", shader_name)
+
+            base_color = resolved.get("base_color")
+            shader.parm("basecolor_useTexture").set(1 if base_color else 0)
+            shader.parm("basecolorr").set(1.0)
+            shader.parm("basecolorg").set(1.0)
+            shader.parm("basecolorb").set(1.0)
+            shader.parm("basecolor_usePointColor").set(0)
+            shader.parm("basecolor_texture").set(base_color[0] if base_color else "")
+
+            normal = resolved.get("normal")
+            shader.parm("baseNormal_useTexture").set(1 if normal else 0)
+            shader.parm("baseNormal_texture").set(normal[0] if normal else "")
+
+            roughness = resolved.get("roughness")
+            shader.parm("rough_useTexture").set(1 if roughness else 0)
+            shader.parm("rough_texture").set(roughness[0] if roughness else "")
+            shader.parm("rough_monoChannel").set(1 if (not roughness or roughness[1] < 0) else roughness[1] + 1)
+
+            metallic = resolved.get("metallic")
+            shader.parm("metallic_useTexture").set(1 if metallic else 0)
+            shader.parm("metallic_texture").set(metallic[0] if metallic else "")
+            shader.parm("metallic_monoChannel").set(1 if (not metallic or metallic[1] < 0) else metallic[1] + 1)
 
 def dev_view_3d(hda_node):
     node = hda_node.node("wrangle_uv_region_color")
@@ -336,6 +389,7 @@ def sync_material_overrides(hda_node):
                 hda_node.parm("slot_texture%d_%d_%d" % (idx, j, k)).set(slot.get("texture", ""))
                 hda_node.parm("slot_channel%d_%d_%d" % (idx, j, k)).set(slot.get("channel", "RGBA"))
 
+    build_preview_shaders(hda_node)
     dev_view_3d(hda_node)
 
 def cache_menu_data(hda, source_name, cache_key, collect):
@@ -443,3 +497,4 @@ def import_lods(hda_node):
         source = hda_node.parm("lod_source%d" % i)
         if source is not None:
             source.set(str(i))
+
