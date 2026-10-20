@@ -1,5 +1,10 @@
 string uv_ch = chs("../uv_channel");
+if (uv_ch == "none" || uv_ch == "") {
+    uv_ch = "uv";
+}
+if (!hasvertexattrib(0, uv_ch)) {
+    return;
+}
 string backup = uv_ch + "_original";
-
 vector value = vertex(0, uv_ch, @vtxnum);
-setvertexattrib(0, backup, @vtxnum, -1, value, "set");
+setvertexattrib(0, backup, @primnum, @vtxnum, value, "set");
