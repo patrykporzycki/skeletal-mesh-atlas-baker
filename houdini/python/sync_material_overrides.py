@@ -286,42 +286,53 @@ def hide_preview(hda_node):
 
 def sync_material_overrides(hda_node):
     input_node = hda_node.node("switch_skin")
-    if input_node is not None:
-        try:
-            geometry = input_node.geometry()
-        except hou.Error:
-            geometry = None
-        if geometry is None or geometry.findPrimAttrib("fbx_material_name") is None:
-            input_node = hda_node.node("fuse_fbx_import")
-    else:
+    if input_node is None:
         input_node = hda_node.node("fuse_fbx_import")
     if input_node is None:
         return
-    input_node.cook(force=True)
     try:
         geo = input_node.geometry()
     except hou.Error:
-        return
+        geo = None
+    if geo is None or geo.findPrimAttrib("fbx_material_name") is None:
+        fallback = hda_node.node("fuse_fbx_import")
+        if fallback is not None and fallback != input_node:
+            try:
+                geo = fallback.geometry()
+            except hou.Error:
+                geo = None
     if geo is None or geo.findPrimAttrib("fbx_material_name") is None:
         print("[sync_material_overrides] brak fbx_material_name na geometrii!")
         return
 
-    has_part = geo.findPointAttrib("part_id") is not None
     has_name = geo.findPrimAttrib("name") is not None
+    has_mesh_part = geo.findPrimAttrib("mesh_part") is not None
 
     mesh_info = {}
-    for prim in geo.prims():
-        part = 0
-        if has_part and len(prim.points()) > 0:
-            part = prim.points()[0].attribValue("part_id")
-        info = mesh_info.setdefault(part, {"name": "", "materials": set()})
-        if has_name and not info["name"]:
-            nm = prim.attribValue("name")
-            if nm:
-                info["name"] = nm
-        name = prim.attribValue("fbx_material_name")
-        if name:
-            info["materials"].add(name)
+    if has_mesh_part:
+        material_names = geo.primStringAttribValues("fbx_material_name")
+        part_ids = geo.primIntAttribValues("mesh_part")
+        prim_names = geo.primStringAttribValues("name") if has_name else ("",) * len(part_ids)
+        for part, prim_name, material_name in dict.fromkeys(zip(part_ids, prim_names, material_names)):
+            info = mesh_info.setdefault(part, {"name": "", "materials": set()})
+            if prim_name and not info["name"]:
+                info["name"] = prim_name
+            if material_name:
+                info["materials"].add(material_name)
+    else:
+        has_part = geo.findPointAttrib("part_id") is not None
+        for prim in geo.prims():
+            part = 0
+            if has_part and len(prim.points()) > 0:
+                part = prim.points()[0].attribValue("part_id")
+            info = mesh_info.setdefault(part, {"name": "", "materials": set()})
+            if has_name and not info["name"]:
+                nm = prim.attribValue("name")
+                if nm:
+                    info["name"] = nm
+            name = prim.attribValue("fbx_material_name")
+            if name:
+                info["materials"].add(name)
 
     old = {}
     old_names = {}
@@ -389,6 +400,14 @@ def sync_material_overrides(hda_node):
                 hda_node.parm("slot_texture%d_%d_%d" % (idx, j, k)).set(slot.get("texture", ""))
                 hda_node.parm("slot_channel%d_%d_%d" % (idx, j, k)).set(slot.get("channel", "RGBA"))
 
+    try:
+        detect_geo = hda_node.node("wrangle_detect_lods").geometry()
+        if detect_geo is not None:
+            hda_node.setCachedUserData("uv_channels", collect_uv_channels(detect_geo))
+            hda_node.setCachedUserData("lod_source", collect_lod_source(detect_geo))
+    except hou.Error:
+        pass
+
     build_preview_shaders(hda_node)
     dev_view_3d(hda_node)
 
@@ -438,9 +457,9 @@ def collect_uv_channels(geometry):
 def sync_uv_channels():
     hda = hou.pwd()
 
-    names = cache_menu_data(hda, "detect_lods", "uv_channels", collect_uv_channels)
+    names = hda.cachedUserData("uv_channels")
     if not names:
-        return ["none", "No UV channel"]
+        return ["uv", "uv"]
 
     menu = []
     for item in names:
@@ -466,7 +485,7 @@ def collect_lod_source(geometry):
 
 def create_lod_source_menu(parm):
     node = parm.node()
-    max_lod = cache_menu_data(node, "detect_lods", "lod_source", collect_lod_source)
+    max_lod = node.cachedUserData("lod_source")
     if not max_lod:
         max_lod = 0
 
@@ -476,7 +495,7 @@ def create_lod_source_menu(parm):
     return menu
 
 def import_lods(hda_node):
-    detect = hda_node.node("detect_lods")
+    detect = hda_node.node("wrangle_detect_lods")
     if detect is None:
         return
     try:
