@@ -13,6 +13,7 @@ CHANNEL_MAP = {"R": 0, "G": 1, "B": 2, "A": 3, "RGBA": -1, "RGB": -1}
 
 def build_preview_shaders(hda_node):
     materials_network = hou.node("/mat")
+    expected = set()
     mesh_count = hda_node.parm("meshes").evalAsInt()
     for mesh in range(1, mesh_count + 1):
         material_count_parm = hda_node.parm("material_overrides%d" % mesh)
@@ -37,6 +38,7 @@ def build_preview_shaders(hda_node):
 
             clean_name = re.sub(r"[^a-zA-Z0-9_]", "_", material_name)
             shader_name = "mat_%d_%s" % (mesh - 1, clean_name)
+            expected.add(shader_name)
             shader = materials_network.node(shader_name)
             if shader is None:
                 shader = materials_network.createNode("principledshader::2.0", shader_name)
@@ -63,17 +65,22 @@ def build_preview_shaders(hda_node):
             shader.parm("metallic_texture").set(metallic[0] if metallic else "")
             shader.parm("metallic_monoChannel").set(1 if (not metallic or metallic[1] < 0) else metallic[1] + 1)
 
+    for child in materials_network.children():
+        name = child.name()
+        if name in expected:
+            continue
+        if re.match(r"^mat_\d+_", name) and child.type().name() == "principledshader::2.0":
+            child.destroy()
+
 def dev_view_3d(hda_node):
     node = hda_node.node("wrangle_uv_region_color")
     if node:
         node.setDisplayFlag(True)
-        node.setRenderFlag(True)
 
 def dev_view_uv(hda_node):
     node = hda_node.node("switch_uv_guide")
     if node:
         node.setDisplayFlag(True)
-        node.setRenderFlag(True)
 
 def repack_uv(hda_node):
     uvs = (hda_node.node("uvlayout_max"), hda_node.node("uvlayout_fixed"), hda_node.node("uvlayout_rects"))
@@ -474,18 +481,34 @@ def bake_textures(hda_node):
     baker.parm("execute").pressButton()
 
 def collect_lod_source(geometry):
-    max_lod = 0
+    if geometry is None:
+        return 0
     try:
-        if geometry is not None:
-            for prim in geometry.prims():
-                max_lod = max(max_lod, int(prim.attribValue("source_lod")))
+        values = geometry.primIntAttribValues("source_lod")
     except hou.Error:
-        return max_lod
+        return 0
+    return max(values) if values else 0
+
+def refresh_lod_source_cache(hda_node):
+    fallback = hda_node.cachedUserData("lod_source") or 0
+    detect = hda_node.node("wrangle_detect_lods")
+    if detect is None:
+        return fallback
+    try:
+        geo = detect.geometry()
+    except hou.Error:
+        return fallback
+    if geo is None:
+        return fallback
+    max_lod = collect_lod_source(geo)
+    hda_node.setCachedUserData("lod_source", int(max_lod))
     return max_lod
 
 def create_lod_source_menu(parm):
     node = parm.node()
     max_lod = node.cachedUserData("lod_source")
+    if max_lod is None:
+        max_lod = refresh_lod_source_cache(node)
     if not max_lod:
         max_lod = 0
 
@@ -495,17 +518,9 @@ def create_lod_source_menu(parm):
     return menu
 
 def import_lods(hda_node):
-    detect = hda_node.node("wrangle_detect_lods")
-    if detect is None:
+    max_lod = refresh_lod_source_cache(hda_node)
+    if not max_lod:
         return
-    try:
-        geo = detect.geometry()
-    except hou.Error:
-        return
-    if geo is None:
-        return
-
-    max_lod = max(geo.primIntAttribValues("source_lod"))
 
     levels = hda_node.parm("lod_levels")
     if levels is None:
@@ -514,6 +529,10 @@ def import_lods(hda_node):
 
     for i in range(1, max_lod + 1):
         source = hda_node.parm("lod_source%d" % i)
-        if source is not None:
+        if source is None:
+            continue
+        try:
             source.set(str(i))
+        except hou.Error:
+            continue
 
