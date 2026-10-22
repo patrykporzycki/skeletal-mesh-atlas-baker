@@ -1,4 +1,4 @@
-dict mats_table = detail(0, "mats_table");
+dict mats_table = detail(0, "mat_table");
 
 int part_id = point(0, "part_id", primpoint(0, @primnum, 0));
 string key = sprintf("%d:%s", part_id, s@fbx_material_name);
