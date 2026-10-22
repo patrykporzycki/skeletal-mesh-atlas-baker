@@ -47,9 +47,18 @@ def _make_branch(copnet, raster, name, tex_path, ch):
 
 
 def bake_cop(hda_node):
-    hda_node.node("null_repacked_uv").cook(force=True)
-    geo = hda_node.node("null_repacked_uv").geometry()
+    src = hda_node.node("wrangle_apply_mats")
+    if src is None:
+        src = hda_node.node("null_repacked_uv")
+    if src is None:
+        raise hou.Error("bake_cop: no geometry source (wrangle_apply_mats / null_repacked_uv)")
+
+    src.cook(force=True)
+    geo = src.geometry()
     copnet = hda_node.node("copnet_atlas_baker")
+    if geo is None or not any(a.name() == "bake_slots" for a in geo.globalAttribs()):
+        raise hou.Error("bake_cop: '%s' carries no bake_slots -- the material table was not evaluated upstream"
+                        % src.name())
 
     resolution = hda_node.parm("resolution").eval()
     copnet.parm("res1").set(resolution)
@@ -62,6 +71,8 @@ def bake_cop(hda_node):
     sop = copnet.node("sopimport1")
     setup = copnet.node("rasterizesetup1")
     raster = copnet.node("rasterizegeo1")
+
+    sop.parm("soppath").set(copnet.relativePathTo(src))
     setup.setInput(0, sop, 0)
     raster.setInput(1, setup, 0)
 
